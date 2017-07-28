@@ -253,6 +253,14 @@ set -e
 # set -u
 set -o pipefail
 
+# Apply patches
+
+BORING_SSL_DIR=src/libs/grpc/third_party/boringssl/
+cp patches/boringssl.patch $BORING_SSL_DIR
+cd $BORING_SSL_DIR
+# git apply boringssl.patch
+cd -
+
 
 
 if [ $release ];
@@ -268,7 +276,7 @@ cd $RELEASE_DIR
 rm -f CMakeCache.txt
 build_cmd="$CMAKE \
     $GENERATOR \
-    -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_BUILD_TYPE=RelWithDebInfo \
     $CFLAGS \
     ../"
 echo $build_cmd | tee -a "../$LOG_FILE"
