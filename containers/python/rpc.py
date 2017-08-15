@@ -400,6 +400,7 @@ class PredictionResponse():
             struct.pack("<I", MESSAGE_TYPE_CONTAINER_CONTENT),
             flags=zmq.SNDMORE)
         socket.send(self.msg_id, flags=zmq.SNDMORE)
+        socket.send(struct.pack("<I", self.string_content_end_position), flags=zmq.SNDMORE)
         socket.send(self.output_buffer[0:self.string_content_end_position])
         event_history.insert(EVENT_HISTORY_SENT_CONTAINER_CONTENT)
 

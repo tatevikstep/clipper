@@ -137,12 +137,10 @@ void RPCService::manage_service(const string address) {
     if (request_queue_->size() == 0) {
       zmq_poll(items, 1, 1);
       if (items[0].revents & ZMQ_POLLIN) {
-        log_info(LOGGING_TAG_RPC, "Found message to receive");
         receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
         for(int i = 0; i < num_recv; i++) {
           zmq_poll(items, 1, 0);
           if(items[0].revents & ZMQ_POLLIN) {
-            log_info(LOGGING_TAG_RPC, "Found message to receive");
             receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
           }
         }
@@ -151,7 +149,6 @@ void RPCService::manage_service(const string address) {
       for(int i = 0; i < num_recv; i++) {
         zmq_poll(items, 1, 0);
         if(items[0].revents & ZMQ_POLLIN) {
-          log_info(LOGGING_TAG_RPC, "Found message to receive");
           receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
         }
       }
@@ -288,15 +285,18 @@ void RPCService::receive_message(
     case MessageType::ContainerContent: {
       // This message is a response to a container query
       message_t msg_id;
+      message_t msg_content_size;
       message_t msg_content;
       socket.recv(&msg_id, 0);
-      socket.recv(&msg_content, 0);
+      socket.recv(&msg_content_size, 0);
+
+      uint32_t content_size = static_cast<uint32_t*>(msg_content_size.data())[0];
+      std::shared_ptr<uint8_t> msg_content_buffer(static_cast<uint8_t*>(malloc(content_size)), free);
+
+      socket.recv(msg_content_buffer.get(), content_size, 0);
       if (!new_connection) {
         int id = static_cast<int *>(msg_id.data())[0];
-        std::shared_ptr<uint8_t> msg_content_copy =
-            std::shared_ptr<uint8_t>(static_cast<uint8_t*>(malloc(msg_content.size())), free);
-        memcpy(msg_content_copy.get(), msg_content.data(), msg_content.size());
-        RPCResponse response(id, std::make_pair(msg_content_copy, msg_content.size()));
+        RPCResponse response(id, std::make_pair(msg_content_buffer, msg_content.size()));
 
         auto container_info_entry =
             connections_containers_map.find(connection_id);
