@@ -67,6 +67,7 @@ class StateDB {
   int num_entries();
 
  private:
+  std::unordered_map<StateKey, std::string> cache_;
   redox::Redox redis_connection_;
 };
 
