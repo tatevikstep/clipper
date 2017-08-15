@@ -68,7 +68,7 @@ void RPCService::stop() {
   }
 }
 
-int RPCService::send_message(const vector<vector<uint8_t>> msg,
+int RPCService::send_message(const vector<ByteBuffer>& msg,
                              const int zmq_connection_id) {
   if (!active_) {
     log_error(LOGGING_TAG_RPC,
@@ -206,12 +206,12 @@ void RPCService::send_messages(
     int cur_msg_num = 0;
     // subtract 1 because we start counting at 0
     int last_msg_num = std::get<2>(request).size() - 1;
-    for (const std::vector<uint8_t> &m : std::get<2>(request)) {
+    for (const ByteBuffer &m : std::get<2>(request)) {
       // send the sndmore flag unless we are on the last message part
       if (cur_msg_num < last_msg_num) {
-        socket.send((uint8_t *)m.data(), m.size(), ZMQ_SNDMORE);
+        socket.send(m.first.get(), m.second, ZMQ_SNDMORE);
       } else {
-        socket.send((uint8_t *)m.data(), m.size(), 0);
+        socket.send(m.first.get(), m.second, 0);
       }
       cur_msg_num++;
     }
@@ -293,10 +293,10 @@ void RPCService::receive_message(
       socket.recv(&msg_content, 0);
       if (!new_connection) {
         int id = static_cast<int *>(msg_id.data())[0];
-        vector<uint8_t> content(
-            (uint8_t *)msg_content.data(),
-            (uint8_t *)msg_content.data() + msg_content.size());
-        RPCResponse response(id, content);
+        std::shared_ptr<uint8_t> msg_content_copy =
+            std::shared_ptr<uint8_t>(static_cast<uint8_t*>(malloc(msg_content.size())), free);
+        memcpy(msg_content_copy.get(), msg_content.data(), msg_content.size());
+        RPCResponse response(id, std::make_pair(msg_content_copy, msg_content.size()));
 
         auto container_info_entry =
             connections_containers_map.find(connection_id);

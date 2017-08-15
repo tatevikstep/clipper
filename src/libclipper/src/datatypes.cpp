@@ -13,13 +13,6 @@
 namespace clipper {
 
 template <typename T>
-ByteBuffer get_byte_buffer(std::vector<T> vector) {
-  uint8_t *data = reinterpret_cast<uint8_t *>(vector.data());
-  ByteBuffer bytes(data, data + vector.size() * (sizeof(T) / sizeof(uint8_t)));
-  return bytes;
-}
-
-template <typename T>
 size_t serialize_to_buffer(const std::vector<T> &vector, uint8_t *buf) {
   const uint8_t *byte_data = reinterpret_cast<const uint8_t *>(vector.data());
   size_t amt_to_write = vector.size() * (sizeof(T) / sizeof(uint8_t));
@@ -238,55 +231,54 @@ std::vector<ByteBuffer> rpc::PredictionRequest::serialize() {
         "Attempted to serialize a request with no input data!");
   }
 
-  std::vector<uint32_t> request_metadata;
-  request_metadata.emplace_back(
-      static_cast<uint32_t>(RequestType::PredictRequest));
+  size_t request_metadata_size = 1 * sizeof(uint32_t);
+  std::shared_ptr<uint8_t> request_metadata(static_cast<uint8_t*>(malloc(request_metadata_size)), free);
+  uint32_t* request_metadata_raw = reinterpret_cast<uint32_t*>(request_metadata.get());
+  request_metadata_raw[0] = static_cast<uint32_t>(RequestType ::PredictRequest);
 
-  std::vector<uint32_t> input_metadata;
-  input_metadata.emplace_back(static_cast<uint32_t>(input_type_));
-  input_metadata.emplace_back(static_cast<uint32_t>(inputs_.size()));
+  size_t input_metadata_size = (2 + (inputs_.size() - 1)) * sizeof(uint32_t);
+  std::shared_ptr<uint8_t> input_metadata(static_cast<uint8_t*>(malloc(input_metadata_size)), free);
+  uint32_t* input_metadata_raw = reinterpret_cast<uint32_t*>(input_metadata.get());
+  input_metadata_raw[0] = static_cast<uint32_t>(input_type_);
+  input_metadata_raw[1] = static_cast<uint32_t>(inputs_.size());
 
+  std::shared_ptr<uint8_t> input_buf(static_cast<uint8_t*>(malloc(input_data_size_)), free);
+  uint8_t* input_buf_raw = input_buf.get();
   uint32_t index = 0;
-  uint8_t *input_buf = (uint8_t *)malloc(input_data_size_);
-  uint8_t *input_buf_start = input_buf;
-
-  for (int i = 0; i < (int)inputs_.size(); i++) {
-    size_t amt_written = inputs_[i]->serialize(input_buf);
-    input_buf += amt_written;
+  for (size_t i = 0; i < inputs_.size() - 1; i++) {
+    size_t amt_written = inputs_[i]->serialize(input_buf_raw);
+    input_buf_raw += amt_written;
     index += inputs_[i]->size();
-    input_metadata.push_back(index);
+    input_metadata_raw[i+2] = index;
   }
-  // Remove the final separation index because it results in the
+  // Don't include the final separation index because it results in the
   // creation of an empty data array when deserializing
-  input_metadata.pop_back();
+  size_t tail_index = inputs_.size() - 1;
+  size_t amt_written = inputs_[tail_index]->serialize(input_buf_raw);
+  input_buf_raw += amt_written;
 
-  std::vector<ByteBuffer> serialized_request;
-  ByteBuffer serialized_input_metadata = get_byte_buffer(input_metadata);
-  ByteBuffer serialized_request_metadata = get_byte_buffer(request_metadata);
-  ByteBuffer serialized_inputs =
-      ByteBuffer(input_buf_start, input_buf_start + input_data_size_);
-
-  std::vector<long> input_metadata_size_bytes;
+  size_t input_metadata_size_buf_size = 1 * sizeof(long);
+  std::shared_ptr<uint8_t> input_metadata_size_buf(static_cast<uint8_t*>(malloc(input_metadata_size_buf_size)), free);
+  long* input_metadata_size_buf_raw = reinterpret_cast<long*>(input_metadata_size_buf.get());
   // Add the size of the input metadata in bytes. This will be
   // sent prior to the input metadata to allow for proactive
   // buffer allocation in the receiving container
-  input_metadata_size_bytes.push_back(serialized_input_metadata.size());
-  ByteBuffer serialized_input_metadata_size =
-      get_byte_buffer(input_metadata_size_bytes);
+  input_metadata_size_buf_raw[0] = input_metadata_size;
 
-  std::vector<long> inputs_size_bytes;
+  size_t inputs_size_buf_size = 1 * sizeof(long);
+  std::shared_ptr<uint8_t> inputs_size_buf(static_cast<uint8_t*>(malloc(inputs_size_buf_size)), free);
+  long* inputs_size_buf_raw = reinterpret_cast<long*>(inputs_size_buf.get());
   // Add the size of the serialized inputs in bytes. This will be
   // sent prior to the input data to allow for proactive
   // buffer allocation in the receiving container
-  inputs_size_bytes.push_back(serialized_inputs.size());
-  ByteBuffer serialized_inputs_size = get_byte_buffer(inputs_size_bytes);
+  inputs_size_buf_raw[0] = input_data_size_;
 
-  free(input_buf_start);
-  serialized_request.push_back(serialized_request_metadata);
-  serialized_request.push_back(serialized_input_metadata_size);
-  serialized_request.push_back(serialized_input_metadata);
-  serialized_request.push_back(serialized_inputs_size);
-  serialized_request.push_back(serialized_inputs);
+  std::vector<ByteBuffer> serialized_request;
+  serialized_request.push_back(std::make_pair(request_metadata, request_metadata_size));
+  serialized_request.push_back(std::make_pair(input_metadata_size_buf, input_metadata_size_buf_size));
+  serialized_request.push_back(std::make_pair(input_metadata, input_metadata_size));
+  serialized_request.push_back(std::make_pair(inputs_size_buf, inputs_size_buf_size));
+  serialized_request.push_back(std::make_pair(input_buf, input_data_size_));
 
   return serialized_request;
 }
@@ -298,11 +290,11 @@ rpc::PredictionResponse::PredictionResponse(
 rpc::PredictionResponse
 rpc::PredictionResponse::deserialize_prediction_response(ByteBuffer bytes) {
   std::vector<std::string> outputs;
-  uint32_t *output_lengths_data = reinterpret_cast<uint32_t *>(bytes.data());
+  uint32_t *output_lengths_data = reinterpret_cast<uint32_t *>(bytes.first.get());
   uint32_t num_outputs = output_lengths_data[0];
   output_lengths_data++;
   char *output_string_data = reinterpret_cast<char *>(
-      bytes.data() + sizeof(uint32_t) + (num_outputs * sizeof(uint32_t)));
+      bytes.first.get() + sizeof(uint32_t) + (num_outputs * sizeof(uint32_t)));
   for (uint32_t i = 0; i < num_outputs; i++) {
     uint32_t output_length = output_lengths_data[i];
     std::string output(output_string_data, output_length);

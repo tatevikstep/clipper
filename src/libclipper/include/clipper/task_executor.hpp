@@ -432,7 +432,6 @@ class TaskExecutor {
                          std::to_string(batch.size()),
                          query_ids_in_batch.str());
       inflight_messages_.emplace(message_id, std::move(cur_batch));
-
     } else {
       log_error_formatted(
           LOGGING_TAG_TASK_EXECUTOR,

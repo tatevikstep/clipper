@@ -12,7 +12,7 @@
 
 namespace clipper {
 
-using ByteBuffer = std::vector<uint8_t>;
+typedef std::pair<std::shared_ptr<uint8_t>, size_t> ByteBuffer;
 using QueryId = long;
 using FeedbackAck = bool;
 
