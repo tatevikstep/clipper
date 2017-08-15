@@ -86,7 +86,7 @@ class RPCService {
  private:
   void manage_service(const string address);
   void send_messages(socket_t &socket,
-                     boost::bimap<int, vector<uint8_t>> &connections);
+                     boost::bimap<int, vector<uint8_t>> &connections, int num_messages);
 
   void receive_message(
       socket_t &socket, boost::bimap<int, vector<uint8_t>> &connections,

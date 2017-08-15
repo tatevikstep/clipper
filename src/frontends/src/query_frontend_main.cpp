@@ -15,7 +15,11 @@ int main(int argc, char* argv[]) {
     ("redis_port", "Redis port",
         cxxopts::value<int>()->default_value("6379"))
     ("threadpool_size", "Number of threads for the task execution threadpool",
-        cxxopts::value<int>()->default_value("4"));
+        cxxopts::value<int>()->default_value("4"))
+    ("rpc_max_send", "",
+        cxxopts::value<int>()->default_value("-1"))
+    ("rpc_max_recv", "",
+        cxxopts::value<int>()->default_value("1"));
   // clang-format on
   options.parse(argc, argv);
 
@@ -23,6 +27,8 @@ int main(int argc, char* argv[]) {
   conf.set_redis_address(options["redis_ip"].as<std::string>());
   conf.set_redis_port(options["redis_port"].as<int>());
   conf.set_task_execution_threadpool_size(options["threadpool_size"].as<int>());
+  conf.set_rpc_max_send(options["rpc_max_send"].as<int>());
+  conf.set_rpc_max_recv(options["rpc_max_recv"].as<int>());
   conf.ready();
 
   query_frontend::RequestHandler<clipper::QueryProcessor> rh(

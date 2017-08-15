@@ -12,6 +12,7 @@
 #include <clipper/json_util.hpp>
 #include <clipper/logging.hpp>
 #include <clipper/query_processor.hpp>
+#include <clipper/config.hpp>
 
 #include "bench_utils.hpp"
 
@@ -238,10 +239,17 @@ int main(int argc, char *argv[]) {
                            "Clipper generic performance benchmarking");
   // clang-format off
   options.add_options()
-          ("f,filename", "Config file name", cxxopts::value<std::string>());
+      ("f,filename", "Config file name", cxxopts::value<std::string>())
+      ("rpc_recv_max", "", cxxopts::value<int>()->default_value("1"))
+      ("rpc_send_max", "", cxxopts::value<int>()->default_value("-1"));
   // clang-format on
   options.parse(argc, argv);
   bool json_specified = (options.count("filename") > 0);
+
+  Config& conf = get_config();
+  conf.set_rpc_max_recv(options["rpc_recv_max"].as<int>());
+  conf.set_rpc_max_send(options["rpc_send_max"].as<int>());
+  conf.ready();
 
   std::vector<std::string> desired_vars = {
       CIFAR_DATA_PATH,    NUM_BATCHES,          REQUEST_BATCH_DELAY_MICROS,

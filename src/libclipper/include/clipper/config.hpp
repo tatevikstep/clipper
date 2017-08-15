@@ -28,7 +28,9 @@ struct Config {
       : readable_(false),
         redis_address_("localhost"),
         redis_port_(6379),
-        task_execution_threadpool_size_(4) {}
+        task_execution_threadpool_size_(4),
+        rpc_max_recv_(1),
+        rpc_max_send_(-1) {}
 
   /**
    * For unit testing only!
@@ -38,6 +40,8 @@ struct Config {
     redis_address_ = "localhost";
     redis_port_ = 6379;
     task_execution_threadpool_size_ = 4;
+    rpc_max_recv_ = 1;
+    rpc_max_send_ = -1;
   }
 
   void ready() { readable_ = true; }
@@ -98,11 +102,49 @@ struct Config {
     task_execution_threadpool_size_ = size;
   }
 
+  int get_rpc_max_recv() const {
+    if (!readable_) {
+      // TODO: use a better exception
+      throw std::logic_error("Cannot read Config until ready");
+    }
+    assert(readable_);
+    return rpc_max_recv_;
+  }
+
+  void set_rpc_max_recv(int num_messages) {
+    if (readable_) {
+      // TODO: use a better exception
+      throw std::logic_error("Cannot write to Config after ready");
+    }
+    assert(!readable_);
+    rpc_max_recv_ = num_messages;
+  }
+
+  int get_rpc_max_send() const {
+    if (!readable_) {
+      // TODO: use a better exception
+      throw std::logic_error("Cannot read Config until ready");
+    }
+    assert(readable_);
+    return rpc_max_send_;
+  }
+
+  void set_rpc_max_send(int num_messages) {
+    if (readable_) {
+      // TODO: use a better exception
+      throw std::logic_error("Cannot write to Config after ready");
+    }
+    assert(!readable_);
+    rpc_max_send_ = num_messages;
+  }
+
  private:
   bool readable_;
   std::string redis_address_;
   int redis_port_;
   int task_execution_threadpool_size_;
+  int rpc_max_recv_;
+  int rpc_max_send_;
 };
 
 inline Config& get_config() {

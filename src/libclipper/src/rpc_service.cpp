@@ -127,26 +127,36 @@ void RPCService::manage_service(const string address) {
               "Retrying in 1 second...");
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
+  int num_recv = conf.get_rpc_max_recv();
+  int num_send = conf.get_rpc_max_send();
 
   while (active_) {
     // Set poll timeout based on whether there are outgoing messages to
     // send. If there are messages to send, don't let the poll block at all.
     // If there no messages to send, let the poll block for 1 ms.
-    int poll_timeout = 0;
     if (request_queue_->size() == 0) {
-      poll_timeout = 1;
+      zmq_poll(items, 1, 1);
+      if (items[0].revents & ZMQ_POLLIN) {
+        log_info(LOGGING_TAG_RPC, "Found message to receive");
+        receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
+        for(int i = 0; i < num_recv; i++) {
+          zmq_poll(items, 1, 0);
+          if(items[0].revents & ZMQ_POLLIN) {
+            log_info(LOGGING_TAG_RPC, "Found message to receive");
+            receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
+          }
+        }
+      }
+    } else {
+      for(int i = 0; i < num_recv; i++) {
+        zmq_poll(items, 1, 0);
+        if(items[0].revents & ZMQ_POLLIN) {
+          log_info(LOGGING_TAG_RPC, "Found message to receive");
+          receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
+        }
+      }
     }
-    zmq_poll(items, 1, poll_timeout);
-    if (items[0].revents & ZMQ_POLLIN) {
-      // TODO: Balance message sending and receiving fairly
-      // Note: We only receive one message per event loop iteration
-      log_info(LOGGING_TAG_RPC, "Found message to receive");
-
-      receive_message(socket, connections, connections_containers_map,
-                      zmq_connection_id, redis_connection);
-    }
-    // Note: We send all queued messages per event loop iteration
-    send_messages(socket, connections);
+    send_messages(socket, connections, num_send);
   }
   shutdown_service(socket);
 }
@@ -161,8 +171,11 @@ void RPCService::shutdown_service(socket_t &socket) {
 }
 
 void RPCService::send_messages(
-    socket_t &socket, boost::bimap<int, vector<uint8_t>> &connections) {
-  while (request_queue_->size() > 0) {
+    socket_t &socket, boost::bimap<int, vector<uint8_t>> &connections, int num_messages) {
+  if(num_messages == -1) {
+    num_messages = request_queue_->size();
+  }
+  while (request_queue_->size() > 0 && num_messages > 0) {
     long current_time_micros =
         std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::system_clock::now().time_since_epoch())
@@ -200,8 +213,9 @@ void RPCService::send_messages(
       } else {
         socket.send((uint8_t *)m.data(), m.size(), 0);
       }
-      cur_msg_num += 1;
+      cur_msg_num++;
     }
+    num_messages--;
   }
 }
 
