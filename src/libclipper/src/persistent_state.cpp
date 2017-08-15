@@ -7,6 +7,7 @@
 #include <thread>
 
 #include <boost/thread.hpp>
+#include <boost/functional/hash.hpp>
 #include <clipper/config.hpp>
 #include <clipper/constants.hpp>
 #include <clipper/logging.hpp>
@@ -25,7 +26,8 @@ std::string generate_redis_key(const StateKey& key) {
   return key_stream.str();
 }
 
-StateDB::StateDB() {
+StateDB::StateDB() :
+    cache_(std::unordered_map<StateKey, std::string, StateKeyHash, StateKeyEqual>(STATE_DB_CACHE_SIZE_ELEMENTS)){
   Config& conf = get_config();
   while (!redis_connection_.connect(conf.get_redis_address(),
                                     conf.get_redis_port())) {
