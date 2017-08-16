@@ -125,7 +125,7 @@ size_t IntVector::size() const { return size_; }
 
 size_t IntVector::byte_size() const { return size_ * sizeof(int); }
 
-const std::shared_ptr<int> &IntVector::get_data() const { return size_; }
+const std::shared_ptr<int> &IntVector::get_data() const { return data_; }
 
 FloatVector::FloatVector(std::shared_ptr<float> data, size_t size) : data_(data), size_(size) {}
 
@@ -175,7 +175,9 @@ SerializableString::SerializableString(std::shared_ptr<char> data, size_t size)
 InputType SerializableString::type() const { return InputType::Strings; }
 
 size_t SerializableString::serialize(uint8_t *buf) const {
-  return serialize_to_buffer(data_, size_, buf);
+  size_t amt_written = serialize_to_buffer(data_, size_, buf);
+  buf[amt_written] = '\0';
+  return amt_written + 1;
 }
 
 size_t SerializableString::hash() const {

@@ -280,14 +280,13 @@ std::shared_ptr<Input> parse_input(InputType input_type, rapidjson::Value& d) {
     case InputType::Strings: {
       std::string input_string = get_string(d, "input");
       std::shared_ptr<char> vec_data(static_cast<char*>(malloc(input_string.size() * sizeof(char))), free);
-      memcpy(vec_data.get(), input_string.data(), inputs.size() * sizeof(char));
-
-      return std::make_shared<clipper::DoubleVector>(vec_data, inputs.size());
-      return std::make_shared<clipper::SerializableString>(input_string);
+      memcpy(vec_data.get(), input_string.data(), input_string.size() * sizeof(char));
+      return std::make_shared<clipper::SerializableString>(vec_data, input_string.size());
     }
     case InputType::Bytes: {
       std::vector<uint8_t> inputs = get_base64_encoded_byte_array(d, "input");
-      return std::make_shared<clipper::ByteVector>(inputs);
+      std::shared_ptr<uint8_t> vec_data(static_cast<uint8_t*>(malloc(inputs.size())), free);
+      return std::make_shared<clipper::ByteVector>(vec_data, inputs.size());
     }
     default: throw std::invalid_argument("input_type is not a valid type");
   }

@@ -113,9 +113,10 @@ class Tester {
                 log_start_time.time_since_epoch())
                 .count()) /
         1000;
-    std::vector<double> data;
-    data.push_back(log_start_time_millis);
-    std::shared_ptr<Input> input = std::make_shared<DoubleVector>(data);
+    std::shared_ptr<double> data(static_cast<double*>(malloc(sizeof(double))), free);
+    data.get()[0] = log_start_time_millis;
+
+    std::shared_ptr<Input> input = std::make_shared<DoubleVector>(data, 1);
     rpc::PredictionRequest request(InputType::Doubles);
     request.add_input(input);
     auto serialized_request = request.serialize();
