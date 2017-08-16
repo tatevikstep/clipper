@@ -91,5 +91,10 @@ size_t hash_vector(const std::vector<T>& vec) {
   return boost::hash_range(vec.begin(), vec.end());
 }
 
+template <class T>
+size_t hash_shared_ptr(const std::shared_ptr<T>& ptr, const size_t size) {
+  return boost::hash_range(ptr.get(), ptr.get() + size);
+}
+
 }  // namespace clipper
 #endif

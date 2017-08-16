@@ -105,7 +105,7 @@ class Input {
 
 class ByteVector : public Input {
  public:
-  explicit ByteVector(std::vector<uint8_t> data);
+  explicit ByteVector(std::shared_ptr<uint8_t> data, size_t size);
 
   // Disallow copy
   ByteVector(ByteVector &other) = delete;
@@ -120,15 +120,17 @@ class ByteVector : public Input {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
-  const std::vector<uint8_t> &get_data() const;
+
+  const std::shared_ptr<uint8_t> &get_data() const;
 
  private:
-  std::vector<uint8_t> data_;
+  const std::shared_ptr<uint8_t> data_;
+  const size_t size_;
 };
 
 class IntVector : public Input {
  public:
-  explicit IntVector(std::vector<int> data);
+  explicit IntVector(std::shared_ptr<int> data, size_t size);
 
   // Disallow copy
   IntVector(IntVector &other) = delete;
@@ -144,15 +146,17 @@ class IntVector : public Input {
   size_t size() const override;
   size_t byte_size() const override;
 
-  const std::vector<int> &get_data() const;
+  const std::shared_ptr<int> &get_data() const;
 
  private:
-  std::vector<int> data_;
+  const std::shared_ptr<int> data_;
+  const size_t size_;
+
 };
 
 class FloatVector : public Input {
  public:
-  explicit FloatVector(std::vector<float> data);
+  explicit FloatVector(std::shared_ptr<float> data, size_t size);
 
   // Disallow copy
   FloatVector(FloatVector &other) = delete;
@@ -167,10 +171,12 @@ class FloatVector : public Input {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
-  const std::vector<float> &get_data() const;
+
+  const std::shared_ptr<float> &get_data() const;
 
  private:
-  std::vector<float> data_;
+  const std::shared_ptr<float> data_;
+  const size_t size_;
 };
 
 class DoubleVector : public Input {
@@ -190,6 +196,7 @@ class DoubleVector : public Input {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
+
   const std::shared_ptr<double> &get_data() const;
 
  private:
@@ -199,7 +206,7 @@ class DoubleVector : public Input {
 
 class SerializableString : public Input {
  public:
-  explicit SerializableString(std::string data);
+  explicit SerializableString(std::shared_ptr<char> data, size_t size);
 
   // Disallow copy
   SerializableString(SerializableString &other) = delete;
@@ -214,10 +221,11 @@ class SerializableString : public Input {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
-  const std::string &get_data() const;
+  const std::shared_ptr<char> &get_data() const;
 
  private:
-  std::string data_;
+  const std::shared_ptr<char> data_;
+  const size_t size_;
 };
 
 class Query {

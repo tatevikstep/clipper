@@ -260,18 +260,29 @@ std::shared_ptr<Input> parse_input(InputType input_type, rapidjson::Value& d) {
   switch (input_type) {
     case InputType::Doubles: {
       std::vector<double> inputs = get_double_array(d, "input");
-      return std::make_shared<clipper::DoubleVector>(std::shared_ptr<double>(static_cast<double*>(malloc(0)), free), inputs.size());
+      std::shared_ptr<double> vec_data(static_cast<double*>(malloc(inputs.size() * sizeof(double))), free);
+      memcpy(vec_data.get(), inputs.data(), inputs.size() * sizeof(double));
+
+      return std::make_shared<clipper::DoubleVector>(vec_data, inputs.size());
     }
     case InputType::Floats: {
       std::vector<float> inputs = get_float_array(d, "input");
-      return std::make_shared<clipper::FloatVector>(inputs);
+      std::shared_ptr<float> vec_data(static_cast<float*>(malloc(inputs.size() * sizeof(float))), free);
+      memcpy(vec_data.get(), inputs.data(), inputs.size() * sizeof(float));
+      return std::make_shared<clipper::FloatVector>(vec_data, inputs.size());
     }
     case InputType::Ints: {
       std::vector<int> inputs = get_int_array(d, "input");
-      return std::make_shared<clipper::IntVector>(inputs);
+      std::shared_ptr<int> vec_data(static_cast<int*>(malloc(inputs.size() * sizeof(int))), free);
+      memcpy(vec_data.get(), inputs.data(), inputs.size() * sizeof(int));
+      return std::make_shared<clipper::IntVector>(vec_data, inputs.size());
     }
     case InputType::Strings: {
       std::string input_string = get_string(d, "input");
+      std::shared_ptr<char> vec_data(static_cast<char*>(malloc(input_string.size() * sizeof(char))), free);
+      memcpy(vec_data.get(), input_string.data(), inputs.size() * sizeof(char));
+
+      return std::make_shared<clipper::DoubleVector>(vec_data, inputs.size());
       return std::make_shared<clipper::SerializableString>(input_string);
     }
     case InputType::Bytes: {

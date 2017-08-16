@@ -71,8 +71,9 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputInts) {
 
   Query parsed_query = response.query_;
 
-  const std::vector<int>& parsed_input =
-      std::static_pointer_cast<IntVector>(parsed_query.input_)->get_data();
+  std::shared_ptr<IntVector> vec = std::static_pointer_cast<IntVector>(parsed_query.input_);
+  const std::vector<int> parsed_input(vec->get_data().get(), vec->get_data().get() + vec->size());
+
   std::vector<int> expected_input{1, 2, 3, 4};
   EXPECT_EQ(parsed_input, expected_input);
   EXPECT_EQ(parsed_query.label_, "test");
@@ -89,8 +90,9 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputDoubles) {
 
   Query parsed_query = response.query_;
 
-  const std::vector<double>& parsed_input =
-      std::static_pointer_cast<DoubleVector>(parsed_query.input_)->get_data();
+  std::shared_ptr<DoubleVector> vec = std::static_pointer_cast<DoubleVector>(parsed_query.input_);
+  const std::vector<double> parsed_input(vec->get_data().get(), vec->get_data().get() + vec->size());
+
   std::vector<double> expected_input{1.4, 2.23, 3.243242, 0.3223424};
   EXPECT_EQ(parsed_input, expected_input);
   EXPECT_EQ(parsed_query.label_, "test");
@@ -109,9 +111,9 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputString) {
 
   Query parsed_query = response.query_;
 
-  const std::string& parsed_input =
-      std::static_pointer_cast<SerializableString>(parsed_query.input_)
-          ->get_data();
+  std::shared_ptr<SerializableString> vec = std::static_pointer_cast<SerializableString>(parsed_query.input_);
+  const std::string parsed_input(vec->get_data().get(), vec->get_data().get() + vec->size());
+
   std::string expected_input(
       "hello world. This is a test string with punctionation!@#$Y#;}#");
   EXPECT_EQ(parsed_input, expected_input);
