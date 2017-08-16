@@ -36,12 +36,16 @@ std::unordered_map<std::string, std::string> get_config_from_json(
 std::unordered_map<int, std::vector<std::vector<double>>> load_cifar(
     std::string &cifar_data_path);
 
+std::unordered_map<int, std::vector<std::shared_ptr<double>>> load_cifar2(
+    std::string &cifar_data_path);
+
 /**
  * Returns a vector of all the cifar datapoints.
  * Warning: this function mutates the input cifar data.
  */
-std::vector<std::vector<double>> concatenate_cifar_datapoints(
-    std::unordered_map<int, std::vector<std::vector<double>>> cifar_data);
+std::vector<std::shared_ptr<double>> concatenate_cifar_datapoints(
+    std::unordered_map<int, std::vector<std::shared_ptr<double>>> cifar_data);
+
 
 /**
  * Returns the value corresponding to `key` in `config` as a string

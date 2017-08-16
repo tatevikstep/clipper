@@ -48,7 +48,7 @@ std::string get_window_str(int window_lower, int window_upper) {
 }
 
 void send_predictions(std::unordered_map<std::string, std::string> &config,
-                      QueryProcessor &qp, std::vector<std::vector<double>> data,
+                      QueryProcessor &qp, std::vector<std::shared_ptr<double>> data,
                       BenchMetrics &bench_metrics, int thread_id) {
   int num_batches = get_int(NUM_BATCHES, config);
   int request_batch_size = get_int(REQUEST_BATCH_SIZE, config);
@@ -60,7 +60,7 @@ void send_predictions(std::unordered_map<std::string, std::string> &config,
   bool prevent_cache_hits = get_bool(PREVENT_CACHE_HITS, config);
 
   int num_datapoints = static_cast<int>(data.size());
-  std::vector<double> query_vec;
+  std::shared_ptr<double> query_vec;
   std::default_random_engine generator;
   std::poisson_distribution<int> distribution(batch_delay_micros);
   long delay_micros;
@@ -73,11 +73,11 @@ void send_predictions(std::unordered_map<std::string, std::string> &config,
 
       if (prevent_cache_hits) {
         // Modify it to be epoch and thread-specific
-        query_vec[0] = query_num / num_datapoints;
-        query_vec[1] = thread_id;
+        query_vec.get()[0] = query_num / num_datapoints;
+        query_vec.get()[1] = thread_id;
       }
 
-      std::shared_ptr<Input> input = std::make_shared<DoubleVector>(query_vec);
+      std::shared_ptr<Input> input = std::make_shared<DoubleVector>(query_vec, 3072 / sizeof(double));
       Query q = {TEST_APPLICATION_LABEL,
                  UID,
                  input,
@@ -190,8 +190,8 @@ void run_benchmark(std::unordered_map<std::string, std::string> &config) {
 
   // We only need the datapoints – not their labels.
   std::string cifar_data_path = get_str(CIFAR_DATA_PATH, config);
-  auto cifar_data = load_cifar(cifar_data_path);
-  std::vector<std::vector<double>> datapoints =
+  auto cifar_data = load_cifar2(cifar_data_path);
+  std::vector<std::shared_ptr<double>> datapoints =
       concatenate_cifar_datapoints(cifar_data);
   int num_threads = get_int(NUM_THREADS, config);
 

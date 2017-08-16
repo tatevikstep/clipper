@@ -51,6 +51,40 @@ std::unordered_map<std::string, std::string> get_config_from_json(
   return responses;
 }
 
+std::unordered_map<int, std::vector<std::shared_ptr<double>>> load_cifar2(std::string &cifar_data_path) {
+  // A loose check to ensure that the binary dataset (not the python-compatible
+  // dataset) is being used
+  if (cifar_data_path.find(".bin") == std::string::npos) {
+    log_error(
+        "BENCH",
+        "Please specify the full path of the binary CIFAR-100 data file.");
+    std::terminate();
+  }
+
+  std::ifstream cifar_file(cifar_data_path, std::ios::binary);
+  std::unordered_map<int, std::vector<std::shared_ptr<double>>> vecs_map;
+
+  int i = 0;
+  while(cifar_file && i < NUM_CIFAR_DATAPOINTS) {
+    char label_char;
+    cifar_file.get(label_char);
+    int label = static_cast<int>(label_char);
+    char* cifar_vec_raw = static_cast<char*>(malloc(NUM_CIFAR_FEATURES));
+    cifar_file.read(cifar_vec_raw, NUM_CIFAR_FEATURES);
+    std::shared_ptr<double> cifar_vec(reinterpret_cast<double*>(cifar_vec_raw), free);
+    auto label_vecs_search = vecs_map.find(label);
+    if(label_vecs_search == vecs_map.end()) {
+      std::vector<std::shared_ptr<double>> new_label_vecs;
+      new_label_vecs.push_back(std::move(cifar_vec));
+      vecs_map.emplace(label, new_label_vecs);
+    } else {
+      label_vecs_search->second.push_back(std::move(cifar_vec));
+    }
+    i++;
+  }
+  return vecs_map;
+};
+
 std::unordered_map<int, std::vector<std::vector<double>>> load_cifar(
     std::string &cifar_data_path) {
   // A loose check to ensure that the binary dataset (not the python-compatible
@@ -89,11 +123,11 @@ std::unordered_map<int, std::vector<std::vector<double>>> load_cifar(
   return vecs_map;
 }
 
-std::vector<std::vector<double>> concatenate_cifar_datapoints(
-    std::unordered_map<int, std::vector<std::vector<double>>> cifar_data) {
-  std::vector<std::vector<double>> planes_vecs =
+std::vector<std::shared_ptr<double>> concatenate_cifar_datapoints(
+    std::unordered_map<int, std::vector<std::shared_ptr<double>>> cifar_data) {
+  std::vector<std::shared_ptr<double>> planes_vecs =
       cifar_data.find(CIFAR_PLANE_INDEX)->second;
-  std::vector<std::vector<double>> birds_vecs =
+  std::vector<std::shared_ptr<double>> birds_vecs =
       cifar_data.find(CIFAR_BIRD_INDEX)->second;
 
   planes_vecs.insert(planes_vecs.end(), birds_vecs.begin(), birds_vecs.end());

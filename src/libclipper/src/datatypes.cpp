@@ -149,26 +149,28 @@ size_t FloatVector::byte_size() const { return data_.size() * sizeof(float); }
 
 const std::vector<float> &FloatVector::get_data() const { return data_; }
 
-DoubleVector::DoubleVector(std::vector<double> data) : data_(std::move(data)) {}
+DoubleVector::DoubleVector(std::shared_ptr<double> data, size_t size) : data_(data), size_(size) {}
 
 InputType DoubleVector::type() const { return InputType::Doubles; }
 
 size_t DoubleVector::serialize(uint8_t *buf) const {
-  return serialize_to_buffer(data_, buf);
+  size_t amt_to_write = size_ * (sizeof(double) / sizeof(uint8_t));
+  memcpy(buf, data_.get(), amt_to_write);
+  return amt_to_write;
 }
 
 size_t DoubleVector::hash() const {
   // TODO [CLIPPER-63]: Find an alternative to hashing doubles directly, as
   // this is generally a bad idea due to loss of precision from floating point
   // representations
-  return hash_vector(data_);
+  return boost::hash_range(data_.get(), data_.get() + size_);
 }
 
-size_t DoubleVector::size() const { return data_.size(); }
+size_t DoubleVector::size() const { return size_; }
 
-size_t DoubleVector::byte_size() const { return data_.size() * sizeof(double); }
+size_t DoubleVector::byte_size() const { return size_ * sizeof(double); }
 
-const std::vector<double> &DoubleVector::get_data() const { return data_; }
+const std::shared_ptr<double> &DoubleVector::get_data() const { return data_; }
 
 SerializableString::SerializableString(std::string data)
     : data_(std::move(data)) {}

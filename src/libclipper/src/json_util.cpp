@@ -260,7 +260,7 @@ std::shared_ptr<Input> parse_input(InputType input_type, rapidjson::Value& d) {
   switch (input_type) {
     case InputType::Doubles: {
       std::vector<double> inputs = get_double_array(d, "input");
-      return std::make_shared<clipper::DoubleVector>(inputs);
+      return std::make_shared<clipper::DoubleVector>(std::shared_ptr<double>(static_cast<double*>(malloc(0)), free), inputs.size());
     }
     case InputType::Floats: {
       std::vector<float> inputs = get_float_array(d, "input");

@@ -175,7 +175,7 @@ class FloatVector : public Input {
 
 class DoubleVector : public Input {
  public:
-  explicit DoubleVector(std::vector<double> data);
+  explicit DoubleVector(std::shared_ptr<double> data, size_t size);
 
   // Disallow copy
   DoubleVector(DoubleVector &other) = delete;
@@ -190,10 +190,11 @@ class DoubleVector : public Input {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
-  const std::vector<double> &get_data() const;
+  const std::shared_ptr<double> &get_data() const;
 
  private:
-  std::vector<double> data_;
+  const std::shared_ptr<double> data_;
+  const size_t size_;
 };
 
 class SerializableString : public Input {
