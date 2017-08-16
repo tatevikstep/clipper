@@ -5,7 +5,6 @@
 #include <vector>
 
 #include <folly/futures/Future.h>
-#include <wangle/concurrent/CPUThreadPoolExecutor.h>
 #include <cxxopts.hpp>
 
 #include <clipper/constants.hpp>
@@ -67,8 +66,6 @@ void send_predictions(std::unordered_map<std::string, std::string> &config,
   long delay_micros;
   int query_num;
 
-  wangle::CPUThreadPoolExecutor executor(6);
-
   for (int j = 0; j < num_batches; j++) {
     for (int i = 0; i < request_batch_size; i++) {
       query_num = j * request_batch_size + i;
@@ -91,7 +88,7 @@ void send_predictions(std::unordered_map<std::string, std::string> &config,
       folly::Future<Response> prediction = qp.predict(q);
       bench_metrics.request_throughput_->mark(1);
 
-      prediction.via(&executor).then([bench_metrics](Response r) {
+      prediction.then([bench_metrics](Response r) {
         // Update metrics
         if (r.output_is_default_) {
           bench_metrics.default_pred_ratio_->increment(1, 1);
