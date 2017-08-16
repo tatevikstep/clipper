@@ -91,7 +91,7 @@ void send_predictions(std::unordered_map<std::string, std::string> &config,
       folly::Future<Response> prediction = qp.predict(q);
       bench_metrics.request_throughput_->mark(1);
 
-      prediction.via(executor).then([bench_metrics](Response r) {
+      prediction.via(&executor).then([bench_metrics](Response r) {
         // Update metrics
         if (r.output_is_default_) {
           bench_metrics.default_pred_ratio_->increment(1, 1);
