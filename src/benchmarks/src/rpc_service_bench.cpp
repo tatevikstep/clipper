@@ -57,7 +57,10 @@ std::vector<std::shared_ptr<Input>> get_primitive_inputs(
         data_vector.push_back(static_cast<T>(j));
       }
     }
-    std::shared_ptr<N> input = std::make_shared<N>(data_vector);
+    std::shared_ptr<T> input_data(static_cast<T*>(malloc(sizeof(T) * data_vector.size())), free);
+    memcpy(input_data.get(), data_vector.data(), data_vector.size() * sizeof(T));
+
+    std::shared_ptr<N> input = std::make_shared<N>(input_data, data_vector.size());
     generic_input_vector.push_back(std::dynamic_pointer_cast<Input>(input));
     data_vector.clear();
   }
@@ -104,8 +107,10 @@ rpc::PredictionRequest generate_string_request(int message_size) {
   rpc::PredictionRequest request(InputType::Strings);
   for (int i = 0; i < message_size; ++i) {
     std::string str = gen_random_string(150);
+    std::shared_ptr<char> input_data(static_cast<char*>(malloc(str.length() * sizeof(char))), free);
+    memcpy(input_data.get(), str.data(), str.size());
     std::shared_ptr<SerializableString> input =
-        std::make_shared<SerializableString>(str);
+        std::make_shared<SerializableString>(input_data, str.size());
     request.add_input(input);
   }
   return request;
