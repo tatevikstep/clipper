@@ -29,7 +29,7 @@ set_property(TARGET folly PROPERTY
     INTERFACE_LINK_LIBRARIES ${FOLLY_LINK_FLAGS} ${FOLLY_LIBRARY})
 
 # Include Wangle as an imported target
-find_package(Wangle 13:0 REQUIRED)
+find_package(Wangle REQUIRED)
 add_library(wangle INTERFACE IMPORTED)
 set_property(TARGET wangle PROPERTY
         INTERFACE_INCLUDE_DIRECTORIES ${WANGLE_INCLUDE_DIR})
