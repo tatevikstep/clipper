@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <cstring>
 
 #include <boost/exception_ptr.hpp>
 
@@ -375,14 +376,21 @@ class RequestHandler {
 
         // std::string app_name = request.application();
 
-        std::vector<float> data;
-        data.reserve(rpc_context->req_.input().input_size());
-        for (auto& x : rpc_context->req_.input().input()) {
-          data.push_back(x);
-        }
+        size_t data_size = rpc_context->req_.input().input_size()*sizeof(float);
+        std::shared_ptr<float> data(
+            static_cast<float>(malloc(data_size)),
+            free);
+
+        memcpy(data.get(), rpc_context->req_.input().input().data(), data_size);
+
+        // std::vector<float> data;
+        // data.reserve(rpc_context->req_.input().input_size());
+        // for (auto& x : rpc_context->req_.input().input()) {
+        //   data.push_back(x);
+        // }
 
         std::shared_ptr<Input> input =
-            std::make_shared<clipper::FloatVector>(std::move(data));
+            std::make_shared<clipper::FloatVector>(data, rpc_context->req_.input().input_size());
 
         long uid = 0;
         boost::future<clipper::Response> prediction =
