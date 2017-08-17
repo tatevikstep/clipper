@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
 
   using namespace std::chrono_literals;
   while (true) {
-    std::this_thread::sleep_for(20s);
+    std::this_thread::sleep_for(30s);
     server.get_metrics();
     std::cout << server.get_metrics() << std::endl;
   }
