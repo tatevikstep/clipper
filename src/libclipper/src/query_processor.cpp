@@ -130,7 +130,7 @@ folly::Future<Response> QueryProcessor::predict(Query query) {
   folly::Future<Response> response_future = response_promise.getFuture();
 
   response_ready_future.then([
-    outputs_ptr, outputs_mutex, num_tasks, query, query_id, selection_state_,
+    outputs_ptr, outputs_mutex, num_tasks, query, query_id, selection_state=selection_state_,
     current_policy, response_promise = std::move(response_promise),
     default_explanation
   ](const std::pair<size_t,
@@ -143,7 +143,7 @@ folly::Future<Response> QueryProcessor::predict(Query query) {
     }
 
     std::pair<Output, bool> final_output = current_policy->combine_predictions(
-        selection_state_, query, *outputs_ptr);
+        selection_state, query, *outputs_ptr);
 
     std::chrono::time_point<std::chrono::high_resolution_clock> end =
         std::chrono::high_resolution_clock::now();
