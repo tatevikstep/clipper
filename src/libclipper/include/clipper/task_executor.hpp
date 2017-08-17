@@ -300,7 +300,7 @@ class TaskExecutor {
       std::vector<PredictTask> tasks) {
     predictions_counter_->increment(tasks.size());
     std::vector<folly::Future<Output>> output_futures;
-    for (auto t : tasks) {
+    for (auto &t : tasks) {
       // add each task to the queue corresponding to its associated model
       boost::shared_lock<boost::shared_mutex> lock(model_queues_mutex_);
       auto model_queue_entry = model_queues_.find(t.model_);

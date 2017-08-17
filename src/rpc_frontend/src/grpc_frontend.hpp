@@ -454,8 +454,10 @@ class RequestHandler {
     std::unique_lock<std::mutex> l(app_predict_functions_mutex_);
     auto search = app_predict_functions_.find(app_name);
     if (search != app_predict_functions_.end()) {
+      l.unlock();
       search->second(rpc_context);
     } else {
+      l.unlock();
       std::string json_error_response = get_prediction_error_response_content(
           "Request Error", "No registered application with name: " + app_name);
       rpc_context->response_.set_output(json_error_response);
