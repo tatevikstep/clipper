@@ -1,22 +1,54 @@
 FROM frolvlad/alpine-gxx
 
 
-RUN apk add --update curl git bash make boost-dev \
-        cmake libev-dev hiredis-dev zeromq-dev autoconf automake libtool
+
+RUN echo "@testing http://nl.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+
+RUN apk add --update --no-cache curl git bash make boost-dev cmake libev-dev hiredis-dev zeromq-dev \
+    libtool automake autoconf-archive@testing lz4-dev xz-dev snappy-dev zlib-dev \
+    glog-dev@testing scons openssl-dev libevent-dev ca-certificates
 
 RUN curl -LO https://github.com/google/protobuf/archive/v3.3.0.zip \
         && unzip v3.3.0.zip \
         && cd protobuf-3.3.0 \
         && ./autogen.sh \
         && ./configure \
-        && make
+        && make -j8
 
 
 RUN cd /protobuf-3.3.0 && make install
 
-# install go
+# Set up Folly
 
-RUN apk add --no-cache ca-certificates
+## Install DoubleConversion
+RUN git clone https://github.com/google/double-conversion \
+    && cd double-conversion \
+    && cmake -DBUILD_SHARED_LIBS=ON . \
+    && make -j8 \
+    && make install \
+    && ln -s src double-conversion
+
+ENV DOUBLE_CONVERSION_HOME=/double-conversion/double-conversion/
+
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$DOUBLE_CONVERSION_HOME
+
+## Install GFLags
+RUN git clone https://github.com/gflags/gflags \
+    && mkdir gflags/build \
+    && cd gflags/build \
+    && cmake -DBUILD_SHARED_LIBS=ON .. \
+    && make install
+
+## Install Folly
+RUN git clone https://github.com/facebook/folly \
+    && cd folly/folly \
+    && autoreconf -ivf \
+    && ./configure LDFLAGS=-L$DOUBLE_CONVERSION_HOME/ CPPFLAGS=-I$DOUBLE_CONVERSION_HOME \
+    && make -j8 \
+    && make install
+
+
+# Install Go
 
 ENV GOLANG_VERSION 1.9rc1
 
@@ -67,27 +99,28 @@ ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
 
+# Build Clipper
 
-
-
-
+RUN apk add --no-cache perl
 
 COPY ./ /clipper
 
 RUN cd /clipper \
-    && git submodule update --init \
+    && git submodule update --init --recursive \
     && ./configure --cleanup-quiet \
-    # && git submodule foreach --recursive git clean -xfd \
-    # && git submodule foreach --recursive git reset --hard \
     && cd /clipper/src/libs/spdlog \
     && git apply ../patches/make_spdlog_compile_linux.patch \
     && cd /clipper \
-    && git apply patches/include_grpc.patch \
+    # && git submodule foreach --recursive git clean -xfd \
+    # && git submodule foreach --recursive git reset --hard \
+    # && cd /clipper \
+    # && git apply patches/include_grpc.patch \
     && ./configure --release \
     && cd release \
-    && make grpc_cpp_plugin
+    && make -j8 grpc_cpp_plugin \
+    && make -j8 clipper_grpc_frontend
 
-RUN cd /clipper/release && make clipper_grpc_frontend
+# RUN cd /clipper/release && make clipper_grpc_frontend
 
 ENTRYPOINT ["/clipper/release/src/rpc_frontend/clipper_grpc_frontend"]
 
