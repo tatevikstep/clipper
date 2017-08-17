@@ -24,13 +24,17 @@ DefaultOutputSelectionState::DefaultOutputSelectionState(
 std::string DefaultOutputSelectionState::serialize() const {
   rapidjson::Document d;
   d.SetObject();
-  json::add_string(d, "y_hat", default_output_.y_hat_);
+  std::string output(std::get<0>(default_output_.y_hat_).get() + std::get<1>(default_output_.y_hat_),
+                     std::get<0>(default_output_.y_hat_).get() + std::get<2>(default_output_.y_hat_));
+  json::add_string(d, "y_hat", std::move(output));
   return json::to_json_string(d);
 }
 std::string DefaultOutputSelectionState::get_debug_string() const {
   rapidjson::Document d;
   d.SetObject();
-  json::add_string(d, "y_hat", default_output_.y_hat_);
+  std::string output(std::get<0>(default_output_.y_hat_).get() + std::get<1>(default_output_.y_hat_),
+                     std::get<0>(default_output_.y_hat_).get() + std::get<2>(default_output_.y_hat_));
+  json::add_string(d, "y_hat", output);
   std::vector<std::string> empty_vec;
   json::add_string_array(d, "models_used", empty_vec);
   return json::to_json_string(d);
@@ -39,7 +43,10 @@ std::string DefaultOutputSelectionState::get_debug_string() const {
 Output DefaultOutputSelectionState::deserialize(std::string serialized_state) {
   rapidjson::Document d;
   json::parse_json(serialized_state, d);
-  return Output(json::get_string(d, "y_hat"), {});
+  std::string output_str = json::get_string(d, "y_hat");
+  std::shared_ptr<char> output(static_cast<char*>(malloc(output_str.size())), free);
+  memcpy(output.get(), output_str.data(), output_str.size());
+  return Output(std::make_tuple(output, 0, output_str.size()), {});
 }
 
 std::string DefaultOutputSelectionPolicy::get_name() {

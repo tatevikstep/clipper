@@ -13,6 +13,7 @@
 namespace clipper {
 
 typedef std::pair<std::shared_ptr<uint8_t>, size_t> ByteBuffer;
+
 using QueryId = long;
 using FeedbackAck = bool;
 
@@ -54,27 +55,6 @@ class VersionedModelId {
  private:
   std::string name_;
   std::string id_;
-};
-
-class Output {
- public:
-  Output(const std::string y_hat,
-         const std::vector<VersionedModelId> models_used);
-
-  ~Output() = default;
-
-  explicit Output() = default;
-  Output(const Output &) = default;
-  Output &operator=(const Output &) = default;
-
-  Output(Output &&) = default;
-  Output &operator=(Output &&) = default;
-
-  bool operator==(const Output &rhs) const;
-  bool operator!=(const Output &rhs) const;
-
-  std::string y_hat_;
-  std::vector<VersionedModelId> models_used_;
 };
 
 class Input {
@@ -259,32 +239,6 @@ class Query {
   std::chrono::time_point<std::chrono::high_resolution_clock> create_time_;
 };
 
-class Response {
- public:
-  ~Response() = default;
-
-  Response(Query query, QueryId query_id, const long duration_micros,
-           Output output, const bool is_default,
-           const boost::optional<std::string> default_explanation);
-
-  // default copy constructors
-  Response(const Response &) = default;
-  Response &operator=(const Response &) = default;
-
-  // default move constructors
-  Response(Response &&) = default;
-  Response &operator=(Response &&) = default;
-
-  std::string debug_string() const noexcept;
-
-  Query query_;
-  QueryId query_id_;
-  long duration_micros_;
-  Output output_;
-  bool output_is_default_;
-  boost::optional<std::string> default_explanation_;
-};
-
 class Feedback {
  public:
   ~Feedback() = default;
@@ -333,7 +287,6 @@ class PredictTask {
   PredictTask(const PredictTask &other) = default;
 
   PredictTask &operator=(const PredictTask &other) = default;
-
   PredictTask(PredictTask &&other) = default;
 
   PredictTask &operator=(PredictTask &&other) = default;
@@ -396,9 +349,12 @@ class PredictionRequest {
   size_t input_data_size_ = 0;
 };
 
+// Tuple of data_pointer, data_start_index, data_end_index
+typedef std::tuple<std::shared_ptr<char>, size_t, size_t>  PredictionOutput;
+
 class PredictionResponse {
  public:
-  PredictionResponse(const std::vector<std::string> outputs);
+  PredictionResponse(const std::vector<PredictionOutput> outputs);
 
   // Disallow copy
   PredictionResponse(PredictionResponse &other) = delete;
@@ -408,12 +364,59 @@ class PredictionResponse {
   PredictionResponse(PredictionResponse &&other) = default;
   PredictionResponse &operator=(PredictionResponse &&other) = default;
 
-  static PredictionResponse deserialize_prediction_response(ByteBuffer bytes);
+  static PredictionResponse deserialize_prediction_response(std::shared_ptr<char>& response_data);
 
-  std::vector<std::string> outputs_;
+  std::vector<PredictionOutput> outputs_;
 };
 
 }  // namespace rpc
+
+class Output {
+ public:
+  Output(const rpc::PredictionOutput y_hat,
+         const std::vector<VersionedModelId> models_used);
+
+  ~Output() = default;
+
+  explicit Output() = default;
+  Output(const Output &) = default;
+  Output &operator=(const Output &) = default;
+
+  Output(Output &&) = default;
+  Output &operator=(Output &&) = default;
+
+  bool operator==(const Output &rhs) const;
+  bool operator!=(const Output &rhs) const;
+
+  rpc::PredictionOutput y_hat_;
+  std::vector<VersionedModelId> models_used_;
+};
+
+class Response {
+ public:
+  ~Response() = default;
+
+  Response(Query query, QueryId query_id, const long duration_micros,
+           Output output, const bool is_default,
+           const boost::optional<std::string> default_explanation);
+
+  // default copy constructors
+  Response(const Response &) = default;
+  Response &operator=(const Response &) = default;
+
+  // default move constructors
+  Response(Response &&) = default;
+  Response &operator=(Response &&) = default;
+
+  std::string debug_string() const noexcept;
+
+  Query query_;
+  QueryId query_id_;
+  long duration_micros_;
+  Output output_;
+  bool output_is_default_;
+  boost::optional<std::string> default_explanation_;
+};
 
 }  // namespace clipper
 namespace std {
