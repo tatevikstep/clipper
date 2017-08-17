@@ -6,7 +6,7 @@
 #include <vector>
 #include <cstring>
 
-#include <boost/exception_ptr.hpp>
+#include <folly/futures/Future.h>
 
 #include <clipper/config.hpp>
 #include <clipper/constants.hpp>
@@ -378,7 +378,7 @@ class RequestHandler {
 
         size_t data_size = rpc_context->req_.input().input_size()*sizeof(float);
         std::shared_ptr<float> data(
-            static_cast<float>(malloc(data_size)),
+            static_cast<float *>(malloc(data_size)),
             free);
 
         memcpy(data.get(), rpc_context->req_.input().input().data(), data_size);
@@ -393,27 +393,12 @@ class RequestHandler {
             std::make_shared<clipper::FloatVector>(data, rpc_context->req_.input().input_size());
 
         long uid = 0;
-        boost::future<clipper::Response> prediction =
+        folly::Future<clipper::Response> prediction =
             query_processor_.predict(Query{name, uid, input, latency_slo_micros,
                                            policy, versioned_models});
 
-        prediction.then([app_metrics, rpc_context](boost::future<Response> f) {
-          if (f.has_exception()) {
-            try {
-              boost::rethrow_exception(f.get_exception_ptr());
-            } catch (std::exception& e) {
-              clipper::log_error_formatted(clipper::LOGGING_TAG_CLIPPER,
-                                           "Unexpected error: {}", e.what());
-            }
-            // TODO: Use grpc status
-            rpc_context->response_.set_output("An unexpected error occurred!");
-            rpc_context->send_response();
-            // responder.Finish(rpc_response, Status::OK,
-            return;
-          }
-
-          Response r = f.get();
-
+        prediction
+          .then([app_metrics, rpc_context](Response r) {
           // Update metrics
           if (r.output_is_default_) {
             app_metrics.default_pred_ratio_->increment(1, 1);
@@ -428,6 +413,14 @@ class RequestHandler {
           rpc_context->response_.set_output(content);
           rpc_context->send_response();
 
+          })
+        .onError([rpc_context](const std::exception& e) {
+            clipper::log_error_formatted(clipper::LOGGING_TAG_CLIPPER,
+                "Unexpected error: {}", e.what());
+            // TODO: Use grpc status
+            rpc_context->response_.set_output("An unexpected error occurred!");
+            rpc_context->send_response();
+            return;
         });
       } catch (const std::invalid_argument& e) {
         // This invalid argument exception is most likely the propagation of an
