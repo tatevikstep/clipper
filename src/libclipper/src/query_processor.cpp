@@ -64,12 +64,14 @@ folly::Future<Response> QueryProcessor::predict(Query query) {
     log_error(LOGGING_TAG_QUERY_PROCESSOR, err_msg);
     throw PredictError(err_msg);
   }
-  std::shared_ptr<SelectionState> selection_state =
-      current_policy->deserialize(*state_opt);
+
+  if(!selection_state_) {
+    selection_state_ = current_policy->deserialize(*state_opt);
+  }
 
   boost::optional<std::string> default_explanation;
   std::vector<PredictTask> tasks =
-      current_policy->select_predict_tasks(selection_state, query, query_id);
+      current_policy->select_predict_tasks(selection_state_, query, query_id);
 
   log_info_formatted(LOGGING_TAG_QUERY_PROCESSOR, "Found {} tasks",
                      tasks.size());
@@ -128,7 +130,7 @@ folly::Future<Response> QueryProcessor::predict(Query query) {
   folly::Future<Response> response_future = response_promise.getFuture();
 
   response_ready_future.then([
-    outputs_ptr, outputs_mutex, num_tasks, query, query_id, selection_state,
+    outputs_ptr, outputs_mutex, num_tasks, query, query_id, selection_state_,
     current_policy, response_promise = std::move(response_promise),
     default_explanation
   ](const std::pair<size_t,
@@ -141,7 +143,7 @@ folly::Future<Response> QueryProcessor::predict(Query query) {
     }
 
     std::pair<Output, bool> final_output = current_policy->combine_predictions(
-        selection_state, query, *outputs_ptr);
+        selection_state_, query, *outputs_ptr);
 
     std::chrono::time_point<std::chrono::high_resolution_clock> end =
         std::chrono::high_resolution_clock::now();

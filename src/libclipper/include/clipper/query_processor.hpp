@@ -44,6 +44,7 @@ class QueryProcessor {
  private:
   std::atomic<long> query_counter_{0};
   std::shared_ptr<StateDB> state_db_;
+  std::shared_ptr<SelectionState> selection_state_;
   TaskExecutor task_executor_;
   TimerSystem<HighPrecisionClock> timer_system_{HighPrecisionClock()};
   // This is a heteregenous container of different instances of selection
