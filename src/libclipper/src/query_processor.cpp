@@ -155,9 +155,9 @@ folly::Future<Response> QueryProcessor::predict(Query query) {
     Response response{query,
                       query_id,
                       duration_micros,
-                      final_output.first,
+                      std::move(final_output.first),
                       final_output.second,
-                      default_explanation};
+                      std::move(default_explanation)};
     response_promise.setValue(response);
   });
   return response_future;
