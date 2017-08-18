@@ -304,7 +304,6 @@ rpc::PredictionResponse::deserialize_prediction_response(std::shared_ptr<char>& 
   for (uint32_t i = 0; i < num_outputs; i++) {
     uint32_t output_length = output_lengths_data[i];
     PredictionOutput output(response_data, curr_output_index, curr_output_index + output_length);
-    std::string test_str(response_data.get() + curr_output_index, response_data.get() + curr_output_index + output_length);
     outputs.push_back(std::move(output));
     curr_output_index += output_length;
   }

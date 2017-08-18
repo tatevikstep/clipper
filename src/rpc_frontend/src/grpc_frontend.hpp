@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 #include <cstring>
+#include <tuple>
 
 #include <folly/futures/Future.h>
 
@@ -350,7 +351,12 @@ class RequestHandler {
     // Initialize selection state for this application
     if (policy == clipper::DefaultOutputSelectionPolicy::get_name()) {
       clipper::DefaultOutputSelectionPolicy p;
-      clipper::Output parsed_default_output(default_output, {});
+      std::shared_ptr<char> default_output_char_ptr(
+          static_cast<char *>(malloc(default_output.size()*sizeof(char))),
+          free);
+      memcpy(default_output_char_ptr.get(), default_output.c_str(), default_output.size()*sizeof(char));
+      clipper::rpc::PredictionOutput default_output_obj(default_output_char_ptr, 0, default_output.size());
+      clipper::Output parsed_default_output(default_output_obj, {});
       auto init_state = p.init_state(parsed_default_output);
       clipper::StateKey state_key{name, clipper::DEFAULT_USER_ID, 0};
       query_processor_.get_state_table()->put(state_key,
@@ -409,8 +415,19 @@ class RequestHandler {
           app_metrics.num_predictions_->increment(1);
           app_metrics.throughput_->mark(1);
 
-          std::string content = get_prediction_response_content(r);
-          rpc_context->response_.set_output(content);
+          // std::string content = get_prediction_response_content(r);
+          // rpc_context->response_.set_output(content);
+
+          if (r.output_is_default_) {
+            std::string content = get_prediction_response_content(r);
+            rpc_context->response_.set_output(content);
+          } else {
+            std::shared_ptr<char> ptr;
+            size_t start;
+            size_t end;
+            std::tie(ptr, start, end) = r.output_.y_hat_;
+            rpc_context->response_.set_output(ptr.get() + start, end - start);
+          }
           rpc_context->send_response();
 
           })
@@ -480,14 +497,24 @@ class RequestHandler {
       // and, if possible, nest it in object form within the
       // query response
       rapidjson::Document json_y_hat;
-      clipper::json::parse_json(query_response.output_.y_hat_, json_y_hat);
+      std::shared_ptr<char> ptr;
+      size_t start;
+      size_t end;
+      std::tie(ptr, start, end) = query_response.output_.y_hat_;
+      std::string y_hat_str = std::string(ptr.get() + start, end - start);
+      clipper::json::parse_json(y_hat_str, json_y_hat);
       clipper::json::add_object(json_response, PREDICTION_RESPONSE_KEY_OUTPUT,
                                 json_y_hat);
     } catch (const clipper::json::json_parse_error& e) {
       // If the string output is not JSON-formatted, include
       // it as a JSON-safe string value in the query response
+      std::shared_ptr<char> ptr;
+      size_t start;
+      size_t end;
+      std::tie(ptr, start, end) = query_response.output_.y_hat_;
+      std::string y_hat_str = std::string(ptr.get() + start, end - start);
       clipper::json::add_string(json_response, PREDICTION_RESPONSE_KEY_OUTPUT,
-                                query_response.output_.y_hat_);
+                                y_hat_str);
     }
     clipper::json::add_bool(json_response, PREDICTION_RESPONSE_KEY_USED_DEFAULT,
                             query_response.output_is_default_);
