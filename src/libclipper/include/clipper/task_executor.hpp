@@ -326,8 +326,8 @@ class TaskExecutor {
       boost::shared_lock<boost::shared_mutex> lock(model_queues_mutex_);
       auto model_queue_entry = model_queues_.find(t.model_);
       if (model_queue_entry != model_queues_.end()) {
-        // output_futures.push_back(cache_.fetch(t.model_, t.query_id_));
-        output_futures.push_back(cache_.fetch(t.model_, t.input_));
+        output_futures.push_back(cache_.fetch(t.model_, t.query_id_));
+        // output_futures.push_back(cache_.fetch(t.model_, t.input_));
         if (!output_futures.back().isReady()) {
           t.recv_time_ = std::chrono::system_clock::now();
           model_queue_entry->second->add_task(t);
@@ -372,8 +372,8 @@ class TaskExecutor {
   std::shared_ptr<std::atomic_bool> active_;
   std::shared_ptr<ActiveContainers> active_containers_;
   std::unique_ptr<rpc::RPCService> rpc_;
-  // QueryCache cache_;
-  PredictionCache cache_;
+  QueryCache cache_;
+  // PredictionCache cache_;
   redox::Redox redis_connection_;
   redox::Subscriber redis_subscriber_;
   std::mutex inflight_messages_mutex_;
@@ -522,10 +522,10 @@ class TaskExecutor {
       (*cur_model_metric)
           .latency_->insert(static_cast<int64_t>(task_latency_micros));
     }
-    // cache_.put(completed_msg.model_, completed_msg.query_id_,
-    //            Output{deserialized_output, {completed_msg.model_}});
-    cache_.put(completed_msg.model_, completed_msg.input_,
+    cache_.put(completed_msg.model_, completed_msg.query_id_,
                Output{deserialized_output, {completed_msg.model_}});
+    // cache_.put(completed_msg.model_, completed_msg.input_,
+    //            Output{deserialized_output, {completed_msg.model_}});
   }
 };
 
