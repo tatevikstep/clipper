@@ -22,7 +22,7 @@ class ModelContainer {
  public:
   ~ModelContainer() = default;
   ModelContainer(VersionedModelId model, int container_id, int replica_id,
-                 InputType input_type);
+                 DataType input_type);
   // disallow copy
   ModelContainer(const ModelContainer &) = delete;
   ModelContainer &operator=(const ModelContainer &) = delete;
@@ -38,7 +38,7 @@ class ModelContainer {
   VersionedModelId model_;
   int container_id_;
   int replica_id_;
-  InputType input_type_;
+  DataType input_type_;
   clipper::metrics::Histogram latency_hist_;
 
  private:
@@ -66,7 +66,7 @@ class ActiveContainers {
   ActiveContainers &operator=(ActiveContainers &&) = default;
 
   void add_container(VersionedModelId model, int connection_id, int replica_id,
-                     InputType input_type);
+                     DataType input_type);
 
   /// This method returns the active container specified by the
   /// provided model id and replica id. This is threadsafe because each

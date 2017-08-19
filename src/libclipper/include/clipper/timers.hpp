@@ -138,10 +138,7 @@ class TimerSystem {
       }
       if (queue_.size() > 0) {
         auto earliest_timer = queue_.top();
-        auto duration_ms =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                earliest_timer->deadline_ - cur_time);
-        if (duration_ms.count() <= 0) {
+        if (earliest_timer->deadline_ <= cur_time) {
           earliest_timer->expire();
           queue_.pop();
         }

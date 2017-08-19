@@ -117,7 +117,7 @@ class Tester {
     data.get()[0] = log_start_time_millis;
 
     std::shared_ptr<Input> input = std::make_shared<DoubleVector>(data, 1);
-    rpc::PredictionRequest request(InputType::Doubles);
+    rpc::PredictionRequest request(DataType::Doubles);
     request.add_input(input);
     auto serialized_request = request.serialize();
     int msg_id = rpc_->send_message(serialized_request, container_id);

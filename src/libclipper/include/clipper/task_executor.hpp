@@ -442,14 +442,18 @@ class TaskExecutor {
 
   void on_response_recv(rpc::RPCResponse response) {
     std::unique_lock<std::mutex> l(inflight_messages_mutex_);
-    auto keys = inflight_messages_[response.first];
+    int msg_id;
+    DataType data_type;
+    std::shared_ptr<void> data;
+    std::tie(msg_id, data_type, data) = response;
+
+    auto keys = inflight_messages_[msg_id];
     boost::shared_lock<boost::shared_mutex> metrics_lock(model_metrics_mutex_);
 
-    inflight_messages_.erase(response.first);
+    inflight_messages_.erase(msg_id);
     l.unlock();
     rpc::PredictionResponse parsed_response =
-        rpc::PredictionResponse::deserialize_prediction_response(
-            response.second);
+        rpc::PredictionResponse::deserialize_prediction_response(data_type, data);
     assert(parsed_response.outputs_.size() == keys.size());
     int batch_size = keys.size();
     throughput_meter_->mark(batch_size);
@@ -477,7 +481,7 @@ class TaskExecutor {
   }
 
   void process_completed_message(
-      InflightMessage &completed_msg, rpc::PredictionOutput &deserialized_output,
+      InflightMessage &completed_msg, const std::shared_ptr<OutputData> &deserialized_output,
       std::chrono::time_point<std::chrono::system_clock> &current_time,
       boost::optional<ModelMetrics> cur_model_metric) {
     std::shared_ptr<ModelContainer> processing_container =

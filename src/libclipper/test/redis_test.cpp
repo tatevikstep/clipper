@@ -86,7 +86,7 @@ TEST_F(RedisTest, AddModel) {
   VersionedModelId model = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model, InputType::Ints, labels, container_name,
+  ASSERT_TRUE(add_model(*redis_, model, DataType::Ints, labels, container_name,
                         model_path));
   auto result = get_model(*redis_, model);
   // The model table has 8 fields, so we expect
@@ -97,14 +97,14 @@ TEST_F(RedisTest, AddModel) {
   ASSERT_EQ(result["model_version"], model.get_id());
   ASSERT_FLOAT_EQ(std::stof(result["load"]), 0.0);
   ASSERT_EQ(str_to_labels(result["labels"]), labels);
-  ASSERT_EQ(parse_input_type(result["input_type"]), InputType::Ints);
+  ASSERT_EQ(parse_input_type(result["input_type"]), DataType::Ints);
   ASSERT_EQ(result["container_name"], container_name);
   ASSERT_EQ(result["model_data_path"], model_path);
 }
 
 TEST_F(RedisTest, AddModelLinks) {
   std::string app_name = "my_app_name";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = DefaultOutputSelectionPolicy::get_name();
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;
@@ -152,15 +152,15 @@ TEST_F(RedisTest, GetModelVersions) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
                         container_name, model_path));
   VersionedModelId model2 = VersionedModelId("m", "2");
   std::string model_path2 = "/tmp/models/m/2";
-  ASSERT_TRUE(add_model(*redis_, model2, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels,
                         container_name, model_path2));
   VersionedModelId model4 = VersionedModelId("m", "4");
   std::string model_path4 = "/tmp/models/m/4";
-  ASSERT_TRUE(add_model(*redis_, model4, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model4, DataType::Ints, labels,
                         container_name, model_path4));
 
   std::vector<std::string> versions = get_model_versions(*redis_, "m");
@@ -176,15 +176,15 @@ TEST_F(RedisTest, GetAllModelNames) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
                         container_name, model_path));
   VersionedModelId model2 = VersionedModelId("m", "2");
   std::string model_path2 = "/tmp/models/m/2";
-  ASSERT_TRUE(add_model(*redis_, model2, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels,
                         container_name, model_path2));
   VersionedModelId model3 = VersionedModelId("n", "3");
   std::string model_path3 = "/tmp/models/n/3";
-  ASSERT_TRUE(add_model(*redis_, model3, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels,
                         container_name, model_path3));
 
   // get_all_model_names() should return the de-duplicated model names
@@ -201,15 +201,15 @@ TEST_F(RedisTest, GetAllModels) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
                         container_name, model_path));
   VersionedModelId model2 = VersionedModelId("m", "2");
   std::string model_path2 = "/tmp/models/m/2";
-  ASSERT_TRUE(add_model(*redis_, model2, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels,
                         container_name, model_path2));
   VersionedModelId model3 = VersionedModelId("n", "3");
   std::string model_path3 = "/tmp/models/n/3";
-  ASSERT_TRUE(add_model(*redis_, model3, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels,
                         container_name, model_path3));
 
   // get_all_model_names() should return the de-duplicated model names
@@ -230,7 +230,7 @@ TEST_F(RedisTest, DeleteModel) {
   VersionedModelId model = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model, InputType::Ints, labels, container_name,
+  ASSERT_TRUE(add_model(*redis_, model, DataType::Ints, labels, container_name,
                         model_path));
   auto add_result = get_model(*redis_, model);
   EXPECT_EQ(add_result.size(), static_cast<size_t>(7));
@@ -243,7 +243,7 @@ TEST_F(RedisTest, AddContainer) {
   VersionedModelId model = VersionedModelId("m", "1");
   int replica_id = 4;
   int zmq_connection_id = 12;
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   ASSERT_TRUE(
       add_container(*redis_, model, replica_id, zmq_connection_id, input_type));
   auto result = get_container(*redis_, model, replica_id);
@@ -263,7 +263,7 @@ TEST_F(RedisTest, AddContainer) {
 TEST_F(RedisTest, GetAllContainers) {
   VersionedModelId model = VersionedModelId("m", "1");
   int zmq_connection_id = 0;
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   ASSERT_TRUE(add_container(*redis_, model, 0, zmq_connection_id, input_type));
 
   ASSERT_TRUE(
@@ -293,7 +293,7 @@ TEST_F(RedisTest, DeleteContainer) {
   VersionedModelId model = VersionedModelId("m", "1");
   int replica_id = 4;
   int zmq_connection_id = 12;
-  InputType input_type = InputType::Strings;
+  DataType input_type = DataType::Strings;
   ASSERT_TRUE(
       add_container(*redis_, model, replica_id, zmq_connection_id, input_type));
   auto get_result = get_container(*redis_, model, replica_id);
@@ -305,7 +305,7 @@ TEST_F(RedisTest, DeleteContainer) {
 
 TEST_F(RedisTest, AddApplication) {
   std::string name = "my_app_name";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = DefaultOutputSelectionPolicy::get_name();
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;
@@ -324,7 +324,7 @@ TEST_F(RedisTest, AddApplication) {
 
 TEST_F(RedisTest, DeleteApplication) {
   std::string name = "my_app_name";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = "exp3_policy";
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;
@@ -340,14 +340,14 @@ TEST_F(RedisTest, DeleteApplication) {
 TEST_F(RedisTest, GetAllApplicationNames) {
   // Add a few applications, get should return all of their names.
   std::string name = "my_app_name";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = "exp3_policy";
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;
   ASSERT_TRUE(add_application(*redis_, name, input_type, policy, default_output,
                               latency_slo_micros));
   std::string name2 = "my_app_name_2";
-  InputType input_type2 = InputType::Doubles;
+  DataType input_type2 = DataType::Doubles;
   std::string policy2 = "exp4_policy";
   int latency_slo_micros2 = 50000;
   std::string default_output2 = "1.0";
@@ -389,7 +389,7 @@ TEST_F(RedisTest, SubscriptionDetectModelAdd) {
       });
   // give Redis some time to register the subscription
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  ASSERT_TRUE(add_model(*redis_, model, InputType::Ints, labels, container_name,
+  ASSERT_TRUE(add_model(*redis_, model, DataType::Ints, labels, container_name,
                         model_path));
   std::unique_lock<std::mutex> l(notification_mutex);
   bool result = notification_recv.wait_for(l, std::chrono::milliseconds(1000),
@@ -402,7 +402,7 @@ TEST_F(RedisTest, SubscriptionDetectModelDelete) {
   VersionedModelId model = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model, InputType::Ints, labels, container_name,
+  ASSERT_TRUE(add_model(*redis_, model, DataType::Ints, labels, container_name,
                         model_path));
   std::condition_variable_any notification_recv;
   std::mutex notification_mutex;
@@ -434,7 +434,7 @@ TEST_F(RedisTest, SubscriptionDetectContainerAdd) {
   int model_replica_id = 0;
   int zmq_connection_id = 7;
   std::string replica_key = gen_model_replica_key(model_id, model_replica_id);
-  InputType input_type = InputType::Strings;
+  DataType input_type = DataType::Strings;
 
   std::condition_variable_any notification_recv;
   std::mutex notification_mutex;
@@ -468,7 +468,7 @@ TEST_F(RedisTest, SubscriptionDetectContainerDelete) {
   int model_replica_id = 0;
   int zmq_connection_id = 7;
   std::string replica_key = gen_model_replica_key(model_id, model_replica_id);
-  InputType input_type = InputType::Strings;
+  DataType input_type = DataType::Strings;
   ASSERT_TRUE(add_container(*redis_, model_id, model_replica_id,
                             zmq_connection_id, input_type));
   std::condition_variable_any notification_recv;
@@ -498,7 +498,7 @@ TEST_F(RedisTest, SubscriptionDetectContainerDelete) {
 
 TEST_F(RedisTest, SubscriptionDetectApplicationAdd) {
   std::string name = "my_app_name";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = "exp3_policy";
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;
@@ -529,7 +529,7 @@ TEST_F(RedisTest, SubscriptionDetectApplicationAdd) {
 
 TEST_F(RedisTest, SubscriptionDetectApplicationDelete) {
   std::string name = "my_app_name";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = "exp3_policy";
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;
@@ -585,7 +585,7 @@ TEST_F(RedisTest, SubscriptionDetectModelVersionAdd) {
 TEST_F(RedisTest, SubscriptionDetectModelLinksAdd) {
   // Register the application to link to
   std::string name = "my_app_name";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = "exp3_policy";
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;

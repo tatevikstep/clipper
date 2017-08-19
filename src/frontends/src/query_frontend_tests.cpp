@@ -66,7 +66,7 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputInts) {
   std::string test_json_ints = "{\"input\": [1,2,3,4]}";
   Response response =
       rh_.decode_and_handle_predict(test_json_ints, "test", {}, "test_policy",
-                                    30000, InputType::Ints)
+                                    30000, DataType::Ints)
           .get();
 
   Query parsed_query = response.query_;
@@ -85,7 +85,7 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputDoubles) {
   std::string test_json_doubles = "{\"input\": [1.4,2.23,3.243242,0.3223424]}";
   Response response =
       rh_.decode_and_handle_predict(test_json_doubles, "test", {},
-                                    "test_policy", 30000, InputType::Doubles)
+                                    "test_policy", 30000, DataType::Doubles)
           .get();
 
   Query parsed_query = response.query_;
@@ -106,7 +106,7 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputString) {
       "punctionation!@#$Y#;}#\"}";
   Response response =
       rh_.decode_and_handle_predict(test_json_string, "test", {}, "test_policy",
-                                    30000, InputType::Strings)
+                                    30000, DataType::Strings)
           .get();
 
   Query parsed_query = response.query_;
@@ -131,11 +131,11 @@ TEST_F(QueryFrontendTest, TestDecodeMalformedJSON) {
 
   ASSERT_THROW(
       rh_.decode_and_handle_predict(gibberish_string1, "test", {},
-                                    "test_policy", 30000, InputType::Doubles),
+                                    "test_policy", 30000, DataType::Doubles),
       json_parse_error);
   ASSERT_THROW(
       rh_.decode_and_handle_predict(gibberish_string2, "test", {},
-                                    "test_policy", 30000, InputType::Strings),
+                                    "test_policy", 30000, DataType::Strings),
       json_parse_error);
 }
 
@@ -144,16 +144,16 @@ TEST_F(QueryFrontendTest, TestDecodeMissingJsonField) {
       "{\"other_field\": [1.4,2.23,3.243242,0.3223424]}";
   ASSERT_THROW(
       rh_.decode_and_handle_predict(json_missing_field, "test", {},
-                                    "test_policy", 30000, InputType::Doubles),
+                                    "test_policy", 30000, DataType::Doubles),
       json_semantic_error);
 }
 
-TEST_F(QueryFrontendTest, TestDecodeWrongInputType) {
+TEST_F(QueryFrontendTest, TestDecodeWrongDataType) {
   std::string test_json_doubles =
       "{\"uid\": 23, \"input\": [1.4,2.23,3.243242,0.3223424]}";
   ASSERT_THROW(
       rh_.decode_and_handle_predict(test_json_doubles, "test", {},
-                                    "test_policy", 30000, InputType::Ints),
+                                    "test_policy", 30000, DataType::Ints),
       json_semantic_error);
 }
 
@@ -162,7 +162,7 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectUpdate) {
       "{\"uid\": 23, \"input\": [1.4,2.23,3.243242,0.3223424], \"label\": 1.0}";
   FeedbackAck ack =
       rh_.decode_and_handle_update(update_json, "test", {}, "test_policy",
-                                   InputType::Doubles)
+                                   DataType::Doubles)
           .get();
 
   EXPECT_TRUE(ack);
@@ -172,14 +172,14 @@ TEST_F(QueryFrontendTest, TestDecodeUpdateMissingField) {
   std::string update_json =
       "{\"uid\": 23, \"input\": [1.4,2.23,3.243242,0.3223424]}";
   ASSERT_THROW(rh_.decode_and_handle_update(update_json, "test", {},
-                                            "test_policy", InputType::Doubles),
+                                            "test_policy", DataType::Doubles),
                json_semantic_error);
 }
 
 TEST_F(QueryFrontendTest, TestAddOneApplication) {
   size_t no_apps = rh_.num_applications();
   EXPECT_EQ(no_apps, (size_t)0);
-  rh_.add_application("test_app_1", InputType::Doubles, "test_policy", "0.4",
+  rh_.add_application("test_app_1", DataType::Doubles, "test_policy", "0.4",
                       30000);
   size_t one_app = rh_.num_applications();
   EXPECT_EQ(one_app, (size_t)1);
@@ -191,7 +191,7 @@ TEST_F(QueryFrontendTest, TestAddManyApplications) {
 
   for (int i = 0; i < 500; ++i) {
     std::string cur_name = "test_app_" + std::to_string(i);
-    rh_.add_application(cur_name, InputType::Doubles, "test_policy", "0.4",
+    rh_.add_application(cur_name, DataType::Doubles, "test_policy", "0.4",
                         30000);
   }
 
@@ -204,7 +204,7 @@ TEST_F(QueryFrontendTest,
   std::string test_json = "{\"uid\": 1, \"input\": [1,2,3]}";
   Response response =
       rh_.decode_and_handle_predict(test_json, "test", {}, "test_policy", 30000,
-                                    InputType::Ints)
+                                    DataType::Ints)
           .get();
   std::string json_response = rh_.get_prediction_response_content(response);
   rapidjson::Document parsed_response;
@@ -232,7 +232,7 @@ TEST_F(QueryFrontendTest,
   std::string test_json = "{\"uid\": 1, \"input\": [1,}";
   try {
     rh_.decode_and_handle_predict(test_json, "test", {}, "test_policy", 30000,
-                                  InputType::Ints)
+                                  DataType::Ints)
         .get();
     FAIL() << "Expected an error parsing malformed json: " << test_json;
   } catch (json_parse_error& e) {
@@ -257,14 +257,14 @@ TEST_F(QueryFrontendTest,
 TEST_F(QueryFrontendTest, TestReadApplicationsAtStartup) {
   // Add a few applications
   std::string name = "my_app_name";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = "exp3_policy";
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;
   ASSERT_TRUE(add_application(*redis_, name, input_type, policy, default_output,
                               latency_slo_micros));
   std::string name2 = "my_app_name_2";
-  InputType input_type2 = InputType::Doubles;
+  DataType input_type2 = DataType::Doubles;
   std::string policy2 = "exp4_policy";
   int latency_slo_micros2 = 50000;
   std::string default_output2 = "1.0";
@@ -283,15 +283,15 @@ TEST_F(QueryFrontendTest, TestReadModelsAtStartup) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
                         container_name, model_path));
   VersionedModelId model2 = VersionedModelId("m", "2");
   std::string model_path2 = "/tmp/models/m/2";
-  ASSERT_TRUE(add_model(*redis_, model2, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels,
                         container_name, model_path2));
   VersionedModelId model3 = VersionedModelId("n", "3");
   std::string model_path3 = "/tmp/models/n/3";
-  ASSERT_TRUE(add_model(*redis_, model3, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels,
                         container_name, model_path3));
 
   // Set m@v2 and n@v3 as current model versions
@@ -308,7 +308,7 @@ TEST_F(QueryFrontendTest, TestReadModelLinksAtStartup) {
   // Add a few applications
   std::string app_name_1 = "my_app_name";
   std::string app_name_2 = "my_app_name_2";
-  InputType input_type = InputType::Doubles;
+  DataType input_type = DataType::Doubles;
   std::string policy = "exp3_policy";
   std::string default_output = "1.0";
   int latency_slo_micros = 10000;
@@ -343,7 +343,7 @@ TEST_F(QueryFrontendTest, TestReadInvalidModelVersionAtStartup) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, InputType::Ints, labels,
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
                         container_name, model_path));
   // Not setting the version number will cause get_current_model_version()
   // to return -1, and the RequestHandler should then throw a runtime_error.

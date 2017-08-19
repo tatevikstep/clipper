@@ -21,7 +21,7 @@ namespace clipper {
 const std::string LOGGING_TAG_CONTAINERS = "CONTAINERS";
 
 ModelContainer::ModelContainer(VersionedModelId model, int container_id,
-                               int replica_id, InputType input_type)
+                               int replica_id, DataType input_type)
     : model_(model),
       container_id_(container_id),
       replica_id_(replica_id),
@@ -102,7 +102,7 @@ ActiveContainers::ActiveContainers()
               {})) {}
 
 void ActiveContainers::add_container(VersionedModelId model, int connection_id,
-                                     int replica_id, InputType input_type) {
+                                     int replica_id, DataType input_type) {
   log_info_formatted(LOGGING_TAG_CONTAINERS,
                      "Adding new container - model: {}, version: {}, "
                      "connection ID: {}, replica ID: {}, input_type: {}",

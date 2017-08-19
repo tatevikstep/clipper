@@ -25,7 +25,7 @@
 
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 using clipper::VersionedModelId;
-using clipper::InputType;
+using clipper::DataType;
 using clipper::json::add_string;
 using clipper::json::add_string_array;
 using clipper::json::add_bool;
@@ -579,7 +579,7 @@ class RequestHandler {
     parse_json(json, d);
 
     std::string app_name = get_string(d, "name");
-    InputType input_type =
+    DataType input_type =
         clipper::parse_input_type(get_string(d, "input_type"));
     std::string default_output = get_string(d, "default_output");
 
@@ -629,7 +629,7 @@ class RequestHandler {
 
     std::vector<std::string> labels = get_string_array(d, "labels");
     std::string input_type_raw = get_string(d, "input_type");
-    InputType input_type = clipper::parse_input_type(input_type_raw);
+    DataType input_type = clipper::parse_input_type(input_type_raw);
     std::string container_name = get_string(d, "container_name");
     std::string model_data_path = get_string(d, "model_data_path");
 
@@ -665,7 +665,7 @@ class RequestHandler {
   }
 
   void check_updated_model_consistent_with_app_links(
-      std::string model_name, clipper::InputType proposed_input_type) {
+      std::string model_name, clipper::DataType proposed_input_type) {
     auto app_names =
         clipper::redis::get_all_application_names(redis_connection_);
     std::vector<std::string> linked_models;
@@ -676,7 +676,7 @@ class RequestHandler {
       if (std::find(linked_models.begin(), linked_models.end(), model_name) !=
           linked_models.end()) {
         app_info = clipper::redis::get_application(redis_connection_, app_name);
-        clipper::InputType app_input_type =
+        clipper::DataType app_input_type =
             clipper::parse_input_type(app_info["input_type"]);
         if (proposed_input_type != app_input_type) {
           std::stringstream ss;
@@ -1086,7 +1086,7 @@ class RequestHandler {
 
     auto model_info = clipper::redis::get_model(
         redis_connection_, VersionedModelId(model_name, new_model_version));
-    clipper::InputType input_type =
+    clipper::DataType input_type =
         clipper::parse_input_type(model_info["input_type"]);
     check_updated_model_consistent_with_app_links(model_name, input_type);
 

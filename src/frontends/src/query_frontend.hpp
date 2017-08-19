@@ -1,5 +1,6 @@
 #include <cassert>
 #include <iostream>
+#include <sstream>
 #include <memory>
 #include <string>
 #include <utility>
@@ -24,7 +25,7 @@
 using clipper::Response;
 using clipper::FeedbackAck;
 using clipper::VersionedModelId;
-using clipper::InputType;
+using clipper::DataType;
 using clipper::Input;
 using clipper::Output;
 using clipper::Query;
@@ -162,7 +163,7 @@ class RequestHandler {
                                         "New application detected: {}", key);
             auto app_info =
                 clipper::redis::get_application_by_key(redis_connection_, key);
-            InputType input_type =
+            DataType input_type =
                 clipper::parse_input_type(app_info["input_type"]);
             std::string policy = app_info["policy"];
             std::string default_output = app_info["default_output"];
@@ -225,7 +226,7 @@ class RequestHandler {
           clipper::redis::get_linked_models(redis_connection_, app_name);
       set_linked_models_for_app(app_name, linked_model_names);
 
-      InputType input_type = clipper::parse_input_type(app_info["input_type"]);
+      DataType input_type = clipper::parse_input_type(app_info["input_type"]);
       std::string policy = app_info["policy"];
       std::string default_output = app_info["default_output"];
       int latency_slo_micros = std::stoi(app_info["latency_slo_micros"]);
@@ -282,7 +283,7 @@ class RequestHandler {
     return linked_models_for_apps_[name];
   }
 
-  void add_application(std::string name, InputType input_type,
+  void add_application(std::string name, DataType input_type,
                        std::string policy, std::string default_output,
                        long latency_slo_micros) {
     // TODO: QueryProcessor should handle this. We need to decide how the
@@ -294,7 +295,8 @@ class RequestHandler {
       clipper::DefaultOutputSelectionPolicy p;
       std::shared_ptr<char> default_output_content(static_cast<char*>(malloc(sizeof(default_output))), free);
       memcpy(default_output_content.get(), default_output.data(), default_output.size());
-      clipper::Output parsed_default_output(std::make_tuple(default_output_content, 0, default_output.size()), {});
+      clipper::Output parsed_default_output(
+          std::make_shared<clipper::StringOutput>(default_output_content, 0, default_output.size()), {});
       auto init_state = p.init_state(parsed_default_output);
       clipper::StateKey state_key{name, clipper::DEFAULT_USER_ID, 0};
       query_processor_.get_state_table()->put(state_key,
@@ -430,23 +432,48 @@ class RequestHandler {
     json_response.SetObject();
     clipper::json::add_long(json_response, PREDICTION_RESPONSE_KEY_QUERY_ID,
                             query_response.query_id_);
-    std::string output_str(
-        std::get<0>(query_response.output_.y_hat_).get() + std::get<1>(query_response.output_.y_hat_),
-        std::get<0>(query_response.output_.y_hat_).get() + std::get<2>(query_response.output_.y_hat_));
-    try {
-      // Attempt to parse the string output as JSON
-      // and, if possible, nest it in object form within the
-      // query response
-      rapidjson::Document json_y_hat;
-      clipper::json::parse_json(output_str, json_y_hat);
-      clipper::json::add_object(json_response, PREDICTION_RESPONSE_KEY_OUTPUT,
-                                json_y_hat);
-    } catch (const clipper::json::json_parse_error& e) {
-      // If the string output is not JSON-formatted, include
-      // it as a JSON-safe string value in the query response
-      clipper::json::add_string(json_response, PREDICTION_RESPONSE_KEY_OUTPUT,
-                                output_str);
+
+    std::shared_ptr<clipper::OutputData>& output_data = query_response.output_.y_hat_;
+    switch(output_data->type()) {
+      case DataType::Bytes: {
+        std::vector<uint8_t> output_array;
+        output_data->serialize(output_array.data());
+        clipper::json::add_byte_array(json_response, PREDICTION_RESPONSE_KEY_OUTPUT, output_array);
+      } break;
+      case DataType::Ints: {
+        std::vector<int> output_array;
+        output_array.reserve(output_data->size());
+        output_data->serialize(output_array.data());
+        clipper::json::add_int_array(json_response, PREDICTION_RESPONSE_KEY_OUTPUT, output_array);
+      } break;
+      case DataType::Floats: {
+        std::vector<float> output_array;
+        output_array.reserve(output_data->size());
+        output_data->serialize(output_array.data());
+        clipper::json::add_float_array(json_response, PREDICTION_RESPONSE_KEY_OUTPUT, output_array);
+      } break;
+      case DataType::Strings: {
+        size_t output_str_length = output_data->size() * sizeof(char);
+        char *output_str = static_cast<char *>(malloc(output_str_length));
+        output_data->serialize(output_str);
+        try {
+          rapidjson::Document json_y_hat;
+          clipper::json::parse_json(output_str, output_str_length, json_y_hat);
+          clipper::json::add_object(json_response, PREDICTION_RESPONSE_KEY_OUTPUT,
+                                    json_y_hat);
+        } catch (const clipper::json::json_parse_error &e) {
+          clipper::json::add_string(json_response, PREDICTION_RESPONSE_KEY_OUTPUT, output_str);
+        }
+      } break;
+      case DataType::Invalid:
+      case DataType::Doubles:
+      default:
+        std::stringstream ss;
+        ss << "Attempted to create a prediction response for an invalid input type: "
+           << clipper::get_readable_input_type(output_data->type());
+        throw std::runtime_error(ss.str());
     }
+
     clipper::json::add_bool(json_response, PREDICTION_RESPONSE_KEY_USED_DEFAULT,
                             query_response.output_is_default_);
     if (query_response.output_is_default_ &&
@@ -489,7 +516,7 @@ class RequestHandler {
   folly::Future<Response> decode_and_handle_predict(
       std::string json_content, std::string name,
       std::vector<VersionedModelId> models, std::string policy,
-      long latency_slo_micros, InputType input_type) {
+      long latency_slo_micros, DataType input_type) {
     rapidjson::Document d;
     clipper::json::parse_json(json_content, d);
     long uid = 0;
@@ -513,7 +540,7 @@ class RequestHandler {
   folly::Future<FeedbackAck> decode_and_handle_update(
       std::string json_content, std::string name,
       std::vector<VersionedModelId> models, std::string policy,
-      InputType input_type) {
+      DataType input_type) {
     rapidjson::Document d;
     clipper::json::parse_json(json_content, d);
     long uid = clipper::json::get_long(d, "uid");

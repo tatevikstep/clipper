@@ -260,8 +260,8 @@ void RPCService::receive_message(
         std::string input_type_str(static_cast<char *>(model_input_type.data()),
                                    model_input_type.size());
 
-        InputType input_type =
-            static_cast<InputType>(std::stoi(input_type_str));
+        DataType input_type =
+            static_cast<DataType>(std::stoi(input_type_str));
 
         VersionedModelId model = VersionedModelId(name, version);
         log_info(LOGGING_TAG_RPC, "Container added");
@@ -285,18 +285,23 @@ void RPCService::receive_message(
     case MessageType::ContainerContent: {
       // This message is a response to a container query
       message_t msg_id;
+      message_t msg_content_type;
       message_t msg_content_size;
       message_t msg_content;
       socket.recv(&msg_id, 0);
+      socket.recv(&msg_content_type, 0);
       socket.recv(&msg_content_size, 0);
 
+      DataType content_data_type =
+          static_cast<DataType>(static_cast<int *>(msg_content_type.data())[0]);
       uint32_t content_size = static_cast<uint32_t*>(msg_content_size.data())[0];
-      std::shared_ptr<char> msg_content_buffer(static_cast<char*>(malloc(content_size)), free);
+
+      std::shared_ptr<void> msg_content_buffer(malloc(content_size), free);
 
       socket.recv(msg_content_buffer.get(), content_size, 0);
       if (!new_connection) {
         int id = static_cast<int *>(msg_id.data())[0];
-        RPCResponse response(id, msg_content_buffer);
+        RPCResponse response(id, content_data_type, msg_content_buffer);
 
         auto container_info_entry =
             connections_containers_map.find(connection_id);
