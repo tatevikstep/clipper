@@ -6,7 +6,7 @@ import numpy as np
 
 
 class NoopContainer(rpc.ModelContainerBase):
-    def __init__(self, prediction="1.0"):
+    def __init__(self, prediction=np.array(range(100), dtype=np.float32)):
         self.prediction = prediction
 
     def _predict(self, inputs):

@@ -437,18 +437,19 @@ class RequestHandler {
     switch(output_data->type()) {
       case DataType::Bytes: {
         std::vector<uint8_t> output_array;
+        output_array.resize(output_data->size());
         output_data->serialize(output_array.data());
         clipper::json::add_byte_array(json_response, PREDICTION_RESPONSE_KEY_OUTPUT, output_array);
       } break;
       case DataType::Ints: {
         std::vector<int> output_array;
-        output_array.reserve(output_data->size());
+        output_array.resize(output_data->size());
         output_data->serialize(output_array.data());
         clipper::json::add_int_array(json_response, PREDICTION_RESPONSE_KEY_OUTPUT, output_array);
       } break;
       case DataType::Floats: {
         std::vector<float> output_array;
-        output_array.reserve(output_data->size());
+        output_array.resize(output_data->size());
         output_data->serialize(output_array.data());
         clipper::json::add_float_array(json_response, PREDICTION_RESPONSE_KEY_OUTPUT, output_array);
       } break;

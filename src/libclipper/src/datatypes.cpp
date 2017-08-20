@@ -191,16 +191,20 @@ size_t SerializableString::byte_size() const {
   return size_ + 1;
 }
 
-std::shared_ptr<OutputData> OutputData::create_output(DataType type, std::shared_ptr<void> data, size_t start, size_t end) {
+std::shared_ptr<OutputData> OutputData::create_output(
+    DataType type, std::shared_ptr<void> data, size_t start, size_t end) {
   switch(type) {
     case DataType::Bytes:
       return std::make_shared<ByteVectorOutput>(std::static_pointer_cast<uint8_t>(data), start, end);
     case DataType::Ints:
-      return std::make_shared<IntVectorOutput>(std::static_pointer_cast<int>(data), start, end);
+      return std::make_shared<IntVectorOutput>(
+          std::static_pointer_cast<int>(data), start / sizeof(int), end / sizeof(int));
     case DataType::Floats:
-      return std::make_shared<FloatVectorOutput>(std::static_pointer_cast<float>(data), start, end);
+      return std::make_shared<FloatVectorOutput>(
+          std::static_pointer_cast<float>(data), start / sizeof(float), end / sizeof(float));
     case DataType::Strings:
-      return std::make_shared<StringOutput>(std::static_pointer_cast<char>(data), start, end);
+      return std::make_shared<StringOutput>(
+          std::static_pointer_cast<char>(data), start / sizeof(char), end / sizeof(char));
     case DataType::Doubles:
     case DataType::Invalid:
     default:
