@@ -71,8 +71,10 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputInts) {
 
   Query parsed_query = response.query_;
 
-  std::shared_ptr<IntVector> vec = std::static_pointer_cast<IntVector>(parsed_query.input_);
-  const std::vector<int> parsed_input(vec->get_data().get(), vec->get_data().get() + vec->size());
+  std::shared_ptr<IntVector> vec =
+      std::static_pointer_cast<IntVector>(parsed_query.input_);
+  const std::vector<int> parsed_input(vec->get_data().get(),
+                                      vec->get_data().get() + vec->size());
 
   std::vector<int> expected_input{1, 2, 3, 4};
   EXPECT_EQ(parsed_input, expected_input);
@@ -90,8 +92,10 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputDoubles) {
 
   Query parsed_query = response.query_;
 
-  std::shared_ptr<DoubleVector> vec = std::static_pointer_cast<DoubleVector>(parsed_query.input_);
-  const std::vector<double> parsed_input(vec->get_data().get(), vec->get_data().get() + vec->size());
+  std::shared_ptr<DoubleVector> vec =
+      std::static_pointer_cast<DoubleVector>(parsed_query.input_);
+  const std::vector<double> parsed_input(vec->get_data().get(),
+                                         vec->get_data().get() + vec->size());
 
   std::vector<double> expected_input{1.4, 2.23, 3.243242, 0.3223424};
   EXPECT_EQ(parsed_input, expected_input);
@@ -111,8 +115,10 @@ TEST_F(QueryFrontendTest, TestDecodeCorrectInputString) {
 
   Query parsed_query = response.query_;
 
-  std::shared_ptr<SerializableString> vec = std::static_pointer_cast<SerializableString>(parsed_query.input_);
-  const std::string parsed_input(vec->get_data().get(), vec->get_data().get() + vec->size());
+  std::shared_ptr<SerializableString> vec =
+      std::static_pointer_cast<SerializableString>(parsed_query.input_);
+  const std::string parsed_input(vec->get_data().get(),
+                                 vec->get_data().get() + vec->size());
 
   std::string expected_input(
       "hello world. This is a test string with punctionation!@#$Y#;}#");
@@ -283,16 +289,16 @@ TEST_F(QueryFrontendTest, TestReadModelsAtStartup) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
-                        container_name, model_path));
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels, container_name,
+                        model_path));
   VersionedModelId model2 = VersionedModelId("m", "2");
   std::string model_path2 = "/tmp/models/m/2";
-  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels,
-                        container_name, model_path2));
+  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels, container_name,
+                        model_path2));
   VersionedModelId model3 = VersionedModelId("n", "3");
   std::string model_path3 = "/tmp/models/n/3";
-  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels,
-                        container_name, model_path3));
+  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels, container_name,
+                        model_path3));
 
   // Set m@v2 and n@v3 as current model versions
   set_current_model_version(*redis_, "m", "2");
@@ -343,8 +349,8 @@ TEST_F(QueryFrontendTest, TestReadInvalidModelVersionAtStartup) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
-                        container_name, model_path));
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels, container_name,
+                        model_path));
   // Not setting the version number will cause get_current_model_version()
   // to return -1, and the RequestHandler should then throw a runtime_error.
   ASSERT_THROW(RequestHandler<QueryProcessor>("127.0.0.1", 1337, 8),

@@ -45,11 +45,12 @@ BYTES_PER_CHAR = 1
 # A mapping from python output data types
 # to their corresponding clipper data types for serialization
 SUPPORTED_OUTPUT_TYPES_MAPPING = {
-    np.dtype(np.uint8) : DATA_TYPE_BYTES,
-    np.dtype(np.int32) : DATA_TYPE_INTS,
-    np.dtype(np.float32) : DATA_TYPE_FLOATS,
-    str : DATA_TYPE_STRINGS,
+    np.dtype(np.uint8): DATA_TYPE_BYTES,
+    np.dtype(np.int32): DATA_TYPE_INTS,
+    np.dtype(np.float32): DATA_TYPE_FLOATS,
+    str: DATA_TYPE_STRINGS,
 }
+
 
 def string_to_input_type(input_str):
     input_str = input_str.strip().lower()
@@ -150,7 +151,9 @@ class Server(threading.Thread):
         if outputs_type == np.ndarray:
             outputs_type = outputs[0].dtype
         if not outputs_type in SUPPORTED_OUTPUT_TYPES_MAPPING.keys():
-            raise PredictionError("Model outputs list contains outputs of invalid type: {}!".format(outputs_type))
+            raise PredictionError(
+                "Model outputs list contains outputs of invalid type: {}!".
+                format(outputs_type))
 
         if outputs_type == str:
             for i in range(0, len(outputs)):
@@ -162,8 +165,7 @@ class Server(threading.Thread):
         total_length_elements = sum(len(o) for o in outputs)
 
         response = PredictionResponse(prediction_request.msg_id,
-                                      len(outputs),
-                                      total_length_elements,
+                                      len(outputs), total_length_elements,
                                       outputs_type)
         for output in outputs:
             response.add_output(output)
@@ -399,7 +401,8 @@ class PredictionResponse:
 
         self.memview = memoryview(self.output_buffer)
         struct.pack_into("<I", self.output_buffer, 0, num_outputs)
-        self.content_end_position = BYTES_PER_INT + (BYTES_PER_INT * num_outputs)
+        self.content_end_position = BYTES_PER_INT + (
+            BYTES_PER_INT * num_outputs)
         self.current_output_sizes_position = BYTES_PER_INT
 
     def add_output(self, output):
@@ -424,12 +427,14 @@ class PredictionResponse:
             flags=zmq.SNDMORE)
         socket.send(self.msg_id, flags=zmq.SNDMORE)
         socket.send(struct.pack("<I", self.output_type), flags=zmq.SNDMORE)
-        socket.send(struct.pack("<I", self.content_end_position), flags=zmq.SNDMORE)
+        socket.send(
+            struct.pack("<I", self.content_end_position), flags=zmq.SNDMORE)
         socket.send(self.output_buffer[0:self.content_end_position])
         event_history.insert(EVENT_HISTORY_SENT_CONTAINER_CONTENT)
 
     def expand_buffer_if_necessary(self, num_outputs, content_length_bytes):
-        new_size_bytes = BYTES_PER_INT + (BYTES_PER_INT * num_outputs) + content_length_bytes
+        new_size_bytes = BYTES_PER_INT + (
+            BYTES_PER_INT * num_outputs) + content_length_bytes
         if len(self.output_buffer) < new_size_bytes:
             self.output_buffer = bytearray(new_size_bytes * 2)
 

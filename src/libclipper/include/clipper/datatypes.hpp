@@ -131,7 +131,6 @@ class IntVector : public Input {
  private:
   const std::shared_ptr<int> data_;
   const size_t size_;
-
 };
 
 class FloatVector : public Input {
@@ -344,13 +343,15 @@ class OutputData {
    */
   virtual size_t byte_size() const = 0;
 
-  static std::shared_ptr<OutputData> create_output(
-      DataType type, std::shared_ptr<void> data, size_t start, size_t end);
+  static std::shared_ptr<OutputData> create_output(DataType type,
+                                                   std::shared_ptr<void> data,
+                                                   size_t start, size_t end);
 };
 
 class FloatVectorOutput : public OutputData {
  public:
-  explicit FloatVectorOutput(std::shared_ptr<float> data, size_t start, size_t end);
+  explicit FloatVectorOutput(std::shared_ptr<float> data, size_t start,
+                             size_t end);
 
   // Disallow copy
   FloatVectorOutput(FloatVectorOutput &other) = delete;
@@ -370,7 +371,6 @@ class FloatVectorOutput : public OutputData {
   const std::shared_ptr<float> data_;
   const size_t start_;
   const size_t end_;
-
 };
 
 class IntVectorOutput : public OutputData {
@@ -399,7 +399,8 @@ class IntVectorOutput : public OutputData {
 
 class ByteVectorOutput : public OutputData {
  public:
-  explicit ByteVectorOutput(std::shared_ptr<uint8_t> data, size_t start, size_t end);
+  explicit ByteVectorOutput(std::shared_ptr<uint8_t> data, size_t start,
+                            size_t end);
 
   // Disallow copy
   ByteVectorOutput(ByteVectorOutput &other) = delete;
@@ -505,7 +506,8 @@ class PredictionResponse {
   PredictionResponse(PredictionResponse &&other) = default;
   PredictionResponse &operator=(PredictionResponse &&other) = default;
 
-  static PredictionResponse deserialize_prediction_response(DataType data_type, std::shared_ptr<void>& data);
+  static PredictionResponse deserialize_prediction_response(
+      DataType data_type, std::shared_ptr<void> &data);
 
   const std::vector<std::shared_ptr<OutputData>> outputs_;
 };

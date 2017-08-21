@@ -68,7 +68,7 @@ void RPCService::stop() {
   }
 }
 
-int RPCService::send_message(const vector<ByteBuffer>& msg,
+int RPCService::send_message(const vector<ByteBuffer> &msg,
                              const int zmq_connection_id) {
   if (!active_) {
     log_error(LOGGING_TAG_RPC,
@@ -137,19 +137,22 @@ void RPCService::manage_service(const string address) {
     if (request_queue_->size() == 0) {
       zmq_poll(items, 1, 1);
       if (items[0].revents & ZMQ_POLLIN) {
-        receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
-        for(int i = 0; i < num_recv; i++) {
+        receive_message(socket, connections, connections_containers_map,
+                        zmq_connection_id, redis_connection);
+        for (int i = 0; i < num_recv; i++) {
           zmq_poll(items, 1, 0);
-          if(items[0].revents & ZMQ_POLLIN) {
-            receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
+          if (items[0].revents & ZMQ_POLLIN) {
+            receive_message(socket, connections, connections_containers_map,
+                            zmq_connection_id, redis_connection);
           }
         }
       }
     } else {
-      for(int i = 0; i < num_recv; i++) {
+      for (int i = 0; i < num_recv; i++) {
         zmq_poll(items, 1, 0);
-        if(items[0].revents & ZMQ_POLLIN) {
-          receive_message(socket, connections, connections_containers_map, zmq_connection_id, redis_connection);
+        if (items[0].revents & ZMQ_POLLIN) {
+          receive_message(socket, connections, connections_containers_map,
+                          zmq_connection_id, redis_connection);
         }
       }
     }
@@ -167,9 +170,10 @@ void RPCService::shutdown_service(socket_t &socket) {
   socket.close();
 }
 
-void RPCService::send_messages(
-    socket_t &socket, boost::bimap<int, vector<uint8_t>> &connections, int num_messages) {
-  if(num_messages == -1) {
+void RPCService::send_messages(socket_t &socket,
+                               boost::bimap<int, vector<uint8_t>> &connections,
+                               int num_messages) {
+  if (num_messages == -1) {
     num_messages = request_queue_->size();
   }
   while (request_queue_->size() > 0 && num_messages > 0) {
@@ -260,8 +264,7 @@ void RPCService::receive_message(
         std::string input_type_str(static_cast<char *>(model_input_type.data()),
                                    model_input_type.size());
 
-        DataType input_type =
-            static_cast<DataType>(std::stoi(input_type_str));
+        DataType input_type = static_cast<DataType>(std::stoi(input_type_str));
 
         VersionedModelId model = VersionedModelId(name, version);
         log_info(LOGGING_TAG_RPC, "Container added");
@@ -294,7 +297,8 @@ void RPCService::receive_message(
 
       DataType content_data_type =
           static_cast<DataType>(static_cast<int *>(msg_content_type.data())[0]);
-      uint32_t content_size = static_cast<uint32_t*>(msg_content_size.data())[0];
+      uint32_t content_size =
+          static_cast<uint32_t *>(msg_content_size.data())[0];
 
       std::shared_ptr<void> msg_content_buffer(malloc(content_size), free);
 

@@ -89,7 +89,8 @@ std::vector<VersionedModelId> get_candidate_models(rapidjson::Value& d,
 
 rapidjson::Value& get_object(rapidjson::Value& d, const char* key_name);
 
-void parse_json(const char* json_content, size_t length, rapidjson::Document& d);
+void parse_json(const char* json_content, size_t length,
+                rapidjson::Document& d);
 
 void parse_json(const std::string& json_content, rapidjson::Document& d);
 
@@ -128,8 +129,8 @@ void add_int(rapidjson::Document& d, const char* key_name, int val);
 
 void add_long(rapidjson::Document& d, const char* key_name, long val);
 
-void add_string(rapidjson::Document& d, const char* key_name,
-                const char* val, size_t length);
+void add_string(rapidjson::Document& d, const char* key_name, const char* val,
+                size_t length);
 
 void add_string(rapidjson::Document& d, const char* key_name,
                 const std::string& val);

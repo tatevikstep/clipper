@@ -152,16 +152,16 @@ TEST_F(RedisTest, GetModelVersions) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
-                        container_name, model_path));
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels, container_name,
+                        model_path));
   VersionedModelId model2 = VersionedModelId("m", "2");
   std::string model_path2 = "/tmp/models/m/2";
-  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels,
-                        container_name, model_path2));
+  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels, container_name,
+                        model_path2));
   VersionedModelId model4 = VersionedModelId("m", "4");
   std::string model_path4 = "/tmp/models/m/4";
-  ASSERT_TRUE(add_model(*redis_, model4, DataType::Ints, labels,
-                        container_name, model_path4));
+  ASSERT_TRUE(add_model(*redis_, model4, DataType::Ints, labels, container_name,
+                        model_path4));
 
   std::vector<std::string> versions = get_model_versions(*redis_, "m");
   ASSERT_EQ(versions.size(), (size_t)3);
@@ -176,16 +176,16 @@ TEST_F(RedisTest, GetAllModelNames) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
-                        container_name, model_path));
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels, container_name,
+                        model_path));
   VersionedModelId model2 = VersionedModelId("m", "2");
   std::string model_path2 = "/tmp/models/m/2";
-  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels,
-                        container_name, model_path2));
+  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels, container_name,
+                        model_path2));
   VersionedModelId model3 = VersionedModelId("n", "3");
   std::string model_path3 = "/tmp/models/n/3";
-  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels,
-                        container_name, model_path3));
+  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels, container_name,
+                        model_path3));
 
   // get_all_model_names() should return the de-duplicated model names
   std::vector<std::string> names = get_all_model_names(*redis_);
@@ -201,16 +201,16 @@ TEST_F(RedisTest, GetAllModels) {
   VersionedModelId model1 = VersionedModelId("m", "1");
   std::string container_name = "clipper/test_container";
   std::string model_path = "/tmp/models/m/1";
-  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels,
-                        container_name, model_path));
+  ASSERT_TRUE(add_model(*redis_, model1, DataType::Ints, labels, container_name,
+                        model_path));
   VersionedModelId model2 = VersionedModelId("m", "2");
   std::string model_path2 = "/tmp/models/m/2";
-  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels,
-                        container_name, model_path2));
+  ASSERT_TRUE(add_model(*redis_, model2, DataType::Ints, labels, container_name,
+                        model_path2));
   VersionedModelId model3 = VersionedModelId("n", "3");
   std::string model_path3 = "/tmp/models/n/3";
-  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels,
-                        container_name, model_path3));
+  ASSERT_TRUE(add_model(*redis_, model3, DataType::Ints, labels, container_name,
+                        model_path3));
 
   // get_all_model_names() should return the de-duplicated model names
   std::vector<VersionedModelId> models = get_all_models(*redis_);

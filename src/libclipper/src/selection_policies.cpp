@@ -24,8 +24,10 @@ DefaultOutputSelectionState::DefaultOutputSelectionState(
 std::string DefaultOutputSelectionState::serialize() const {
   rapidjson::Document d;
   d.SetObject();
-  auto output_data = std::dynamic_pointer_cast<StringOutput>(default_output_.y_hat_);
-  char* output_str = static_cast<char*>(malloc(output_data->size() * sizeof(char)));
+  auto output_data =
+      std::dynamic_pointer_cast<StringOutput>(default_output_.y_hat_);
+  char* output_str =
+      static_cast<char*>(malloc(output_data->size() * sizeof(char)));
   output_data->serialize(output_str);
   json::add_string(d, "y_hat", output_str, output_data->size());
   return json::to_json_string(d);
@@ -34,8 +36,10 @@ std::string DefaultOutputSelectionState::serialize() const {
 std::string DefaultOutputSelectionState::get_debug_string() const {
   rapidjson::Document d;
   d.SetObject();
-  auto output_data = std::dynamic_pointer_cast<StringOutput>(default_output_.y_hat_);
-  char* output_str = static_cast<char*>(malloc(output_data->size() * sizeof(char)));
+  auto output_data =
+      std::dynamic_pointer_cast<StringOutput>(default_output_.y_hat_);
+  char* output_str =
+      static_cast<char*>(malloc(output_data->size() * sizeof(char)));
   output_data->serialize(output_str);
   json::add_string(d, "y_hat", output_str, output_data->size());
   std::vector<std::string> empty_vec;
@@ -47,9 +51,11 @@ Output DefaultOutputSelectionState::deserialize(std::string serialized_state) {
   rapidjson::Document d;
   json::parse_json(serialized_state, d);
   std::string output_str = json::get_string(d, "y_hat");
-  std::shared_ptr<char> output(static_cast<char*>(malloc(output_str.size())), free);
+  std::shared_ptr<char> output(static_cast<char*>(malloc(output_str.size())),
+                               free);
   memcpy(output.get(), output_str.data(), output_str.size());
-  return Output(std::make_shared<StringOutput>(output, 0, output_str.size()), {});
+  return Output(std::make_shared<StringOutput>(output, 0, output_str.size()),
+                {});
 }
 
 std::string DefaultOutputSelectionPolicy::get_name() {
