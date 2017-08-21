@@ -28,19 +28,21 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Let the user start this script from anywhere in the filesystem.
 cd $DIR/..
-./configure --release
+# ./configure --release
 cd release
-make -j2 query_frontend management_frontend
-if ! type "redis-server" &> /dev/null; then
-    echo -e "\nERROR:"
-    echo -e "\tClipper require Redis to run. Please install redis-server"
-    echo -e "\tand make sure it's on your PATH.\n"
-    exit 1
-fi
+# ./configure
+# cd debug
+# make -j2 clipper_grpc_frontend management_frontend
+# if ! type "redis-server" &> /dev/null; then
+#     echo -e "\nERROR:"
+#     echo -e "\tClipper require Redis to run. Please install redis-server"
+#     echo -e "\tand make sure it's on your PATH.\n"
+#     exit 1
+# fi
 
 # start Redis if it's not already running
-redis-server &> /dev/null &
-sleep 5
+# redis-server &> /dev/null &
+# sleep 5
 
 # start the query processor frontend
 ./src/management/management_frontend &
@@ -49,6 +51,7 @@ sleep 5
 # echo $(jobs -p)
 
 # start the query processor frontend
-./src/frontends/query_frontend
+./src/rpc_frontend/clipper_grpc_frontend --num_rpc_threads_size 4
+# ./src/rest_frontend/query_frontend
 
 clean_up

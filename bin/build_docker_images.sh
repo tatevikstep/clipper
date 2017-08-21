@@ -17,8 +17,10 @@ cd $DIR/..
 tag=$(<VERSION.txt)
 
 # Build the Clipper Docker images
-time docker build -t clipper/query_frontend:$tag -f QueryFrontendDockerfile ./
-time docker build -t clipper/management_frontend:$tag -f ManagementFrontendDockerfile ./
+time docker build -t clipper/clipper-base:$tag -f ClipperBaseDockerfile ./
+time docker build --build-arg CODE_VERSION=$tag -t clipper/grpc_frontend:$tag -f GRPCFrontendDockerfile ./
+time docker build --build-arg CODE_VERSION=$tag -t clipper/management_frontend:$tag -f ManagementFrontendDockerfile ./
+time docker build --build-arg CODE_VERSION=$tag -t clipper/query_frontend:$tag -f QueryFrontendDockerfile ./
 cd -
 
 # Build Spark JVM Container

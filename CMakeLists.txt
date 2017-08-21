@@ -21,7 +21,7 @@ set_property(TARGET boost PROPERTY
     INTERFACE_LINK_LIBRARIES ${Boost_LIBRARIES})
 
 # Include Folly as an imported target
-find_package(Folly 2017.07.31.00 REQUIRED)
+find_package(Folly REQUIRED)
 add_library(folly INTERFACE IMPORTED)
 set_property(TARGET folly PROPERTY
     INTERFACE_INCLUDE_DIRECTORIES ${FOLLY_INCLUDE_DIR})
@@ -30,9 +30,9 @@ set_property(TARGET folly PROPERTY
     INTERFACE_LINK_LIBRARIES ${FOLLY_LINK_FLAGS} ${FOLLY_LIBRARY})
 
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Werror -Wno-deprecated-declarations -Wno-unsupported-friend")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-sign-compare")
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unsupported-friend")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wno-unsupported-friend -Wno-gnu-anonymous-struct -Wno-nested-anon-types")
 endif()
 
 # be nice to vim users
@@ -71,6 +71,6 @@ download_project(PROJ                googletest
 # when building with Visual Studio
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+# add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 
 subdirs(src)

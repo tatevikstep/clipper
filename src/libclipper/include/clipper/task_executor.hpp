@@ -92,6 +92,25 @@ class PredictionCache {
   std::shared_ptr<metrics::RatioCounter> hit_ratio_;
 };
 
+// NOTE: Prediction cache is now a query cache
+class QueryCache {
+ public:
+  QueryCache();
+  folly::Future<Output> fetch(const VersionedModelId &model,
+                              const QueryId query_id);
+
+  void put(const VersionedModelId &model, const QueryId query_id,
+           const Output &output);
+
+ private:
+  std::mutex m_;
+  size_t hash(const VersionedModelId &model, const QueryId query_id) const;
+  // TODO cache needs a promise as well?
+  std::unordered_map<long, CacheEntry> cache_;
+  // std::shared_ptr<metrics::Counter> lookups_counter_;
+  // std::shared_ptr<metrics::RatioCounter> hit_ratio_;
+};
+
 struct DeadlineCompare {
   bool operator()(const std::pair<Deadline, PredictTask> &lhs,
                   const std::pair<Deadline, PredictTask> &rhs) {
@@ -177,12 +196,13 @@ class InflightMessage {
   InflightMessage(
       const std::chrono::time_point<std::chrono::system_clock> send_time,
       const int container_id, const VersionedModelId model,
-      const int replica_id, const std::shared_ptr<Input> input)
+      const int replica_id, const std::shared_ptr<Input> input, const QueryId query_id)
       : send_time_(send_time),
         container_id_(container_id),
         model_(model),
         replica_id_(replica_id),
-        input_(input) {}
+        input_(input),
+        query_id_(query_id) {}
 
   // Default copy and move constructors
   InflightMessage(const InflightMessage &) = default;
@@ -197,6 +217,7 @@ class InflightMessage {
   VersionedModelId model_;
   int replica_id_;
   std::shared_ptr<Input> input_;
+  QueryId query_id_;
 };
 
 class TaskExecutor {
@@ -300,12 +321,13 @@ class TaskExecutor {
       std::vector<PredictTask> tasks) {
     predictions_counter_->increment(tasks.size());
     std::vector<folly::Future<Output>> output_futures;
-    for (auto t : tasks) {
+    for (auto &t : tasks) {
       // add each task to the queue corresponding to its associated model
       boost::shared_lock<boost::shared_mutex> lock(model_queues_mutex_);
       auto model_queue_entry = model_queues_.find(t.model_);
       if (model_queue_entry != model_queues_.end()) {
-        output_futures.push_back(cache_.fetch(t.model_, t.input_));
+        output_futures.push_back(cache_.fetch(t.model_, t.query_id_));
+        // output_futures.push_back(cache_.fetch(t.model_, t.input_));
         if (!output_futures.back().isReady()) {
           t.recv_time_ = std::chrono::system_clock::now();
           model_queue_entry->second->add_task(t);
@@ -350,7 +372,8 @@ class TaskExecutor {
   std::shared_ptr<std::atomic_bool> active_;
   std::shared_ptr<ActiveContainers> active_containers_;
   std::unique_ptr<rpc::RPCService> rpc_;
-  PredictionCache cache_;
+  QueryCache cache_;
+  // PredictionCache cache_;
   redox::Redox redis_connection_;
   redox::Subscriber redis_subscriber_;
   std::mutex inflight_messages_mutex_;
@@ -420,7 +443,7 @@ class TaskExecutor {
       for (auto b : batch) {
         prediction_request.add_input(b.input_);
         cur_batch.emplace_back(current_time, container->container_id_, b.model_,
-                               container->replica_id_, b.input_);
+                               container->replica_id_, b.input_, b.query_id_);
         query_ids_in_batch << b.query_id_ << " ";
       }
       int message_id = rpc_->send_message(prediction_request.serialize(),
@@ -505,8 +528,10 @@ class TaskExecutor {
       (*cur_model_metric)
           .latency_->insert(static_cast<int64_t>(task_latency_micros));
     }
-    cache_.put(completed_msg.model_, completed_msg.input_,
+    cache_.put(completed_msg.model_, completed_msg.query_id_,
                Output{deserialized_output, {completed_msg.model_}});
+    // cache_.put(completed_msg.model_, completed_msg.input_,
+    //            Output{deserialized_output, {completed_msg.model_}});
   }
 };
 
