@@ -44,7 +44,7 @@ void get_string_data(std::vector<std::string>& string_vector) {
 }
 
 TEST(InputSerializationTests, EmptySerialization) {
-  clipper::rpc::PredictionRequest request(InputType::Bytes);
+  clipper::rpc::PredictionRequest request(DataType::Bytes);
   try {
     request.serialize();
   } catch (std::length_error) {
@@ -55,7 +55,7 @@ TEST(InputSerializationTests, EmptySerialization) {
 }
 
 TEST(InputSerializationTests, ByteSerialization) {
-  clipper::rpc::PredictionRequest request(InputType::Bytes);
+  clipper::rpc::PredictionRequest request(DataType::Bytes);
   std::vector<std::vector<uint8_t>> data_vectors =
       get_primitive_data_vectors<uint8_t>();
   for (int i = 0; i < (int)data_vectors.size(); i++) {
@@ -85,7 +85,7 @@ TEST(InputSerializationTests, ByteSerialization) {
   uint32_t* typed_input_header =
       reinterpret_cast<uint32_t*>(input_header.data());
   ASSERT_EQ(*typed_input_header,
-            static_cast<uint32_t>(clipper::InputType::Bytes));
+            static_cast<uint32_t>(clipper::DataType::Bytes));
   typed_input_header++;
   uint32_t num_inputs = *typed_input_header;
   ASSERT_EQ(num_inputs, static_cast<uint32_t>(data_vectors.size()));
@@ -113,7 +113,7 @@ TEST(InputSerializationTests, ByteSerialization) {
 }
 
 TEST(InputSerializationTests, IntSerialization) {
-  clipper::rpc::PredictionRequest request(InputType::Ints);
+  clipper::rpc::PredictionRequest request(DataType::Ints);
   std::vector<std::vector<int>> data_vectors =
       get_primitive_data_vectors<int>();
   for (int i = 0; i < (int)data_vectors.size(); i++) {
@@ -145,7 +145,7 @@ TEST(InputSerializationTests, IntSerialization) {
   uint32_t* typed_input_header =
       reinterpret_cast<uint32_t*>(input_header.data());
   ASSERT_EQ(*typed_input_header,
-            static_cast<uint32_t>(clipper::InputType::Ints));
+            static_cast<uint32_t>(clipper::DataType::Ints));
   typed_input_header++;
   uint32_t num_inputs = *typed_input_header;
   ASSERT_EQ(num_inputs, static_cast<uint32_t>(data_vectors.size()));
@@ -171,7 +171,7 @@ TEST(InputSerializationTests, IntSerialization) {
 }
 
 TEST(InputSerializationTests, FloatSerialization) {
-  clipper::rpc::PredictionRequest request(InputType::Floats);
+  clipper::rpc::PredictionRequest request(DataType::Floats);
   std::vector<std::vector<float>> data_vectors =
       get_primitive_data_vectors<float>();
   for (int i = 0; i < (int)data_vectors.size(); i++) {
@@ -203,7 +203,7 @@ TEST(InputSerializationTests, FloatSerialization) {
   uint32_t* typed_input_header =
       reinterpret_cast<uint32_t*>(input_header.data());
   ASSERT_EQ(*typed_input_header,
-            static_cast<uint32_t>(clipper::InputType::Floats));
+            static_cast<uint32_t>(clipper::DataType::Floats));
   typed_input_header++;
   uint32_t num_inputs = *typed_input_header;
   ASSERT_EQ(num_inputs, static_cast<uint32_t>(data_vectors.size()));
@@ -230,7 +230,7 @@ TEST(InputSerializationTests, FloatSerialization) {
 }
 
 TEST(InputSerializationTests, DoubleSerialization) {
-  clipper::rpc::PredictionRequest request(InputType::Doubles);
+  clipper::rpc::PredictionRequest request(DataType::Doubles);
   std::vector<std::vector<double>> data_vectors =
       get_primitive_data_vectors<double>();
   for (int i = 0; i < (int)data_vectors.size(); i++) {
@@ -262,7 +262,7 @@ TEST(InputSerializationTests, DoubleSerialization) {
   uint32_t* typed_input_header =
       reinterpret_cast<uint32_t*>(input_header.data());
   ASSERT_EQ(*typed_input_header,
-            static_cast<uint32_t>(clipper::InputType::Doubles));
+            static_cast<uint32_t>(clipper::DataType::Doubles));
   typed_input_header++;
   uint32_t num_inputs = *typed_input_header;
   ASSERT_EQ(num_inputs, static_cast<uint32_t>(data_vectors.size()));
@@ -290,7 +290,7 @@ TEST(InputSerializationTests, DoubleSerialization) {
 }
 
 TEST(InputSerializationTests, StringSerialization) {
-  clipper::rpc::PredictionRequest request(InputType::Strings);
+  clipper::rpc::PredictionRequest request(DataType::Strings);
   std::vector<std::string> string_vector;
   get_string_data(string_vector);
   for (int i = 0; i < (int)string_vector.size(); i++) {
@@ -321,7 +321,7 @@ TEST(InputSerializationTests, StringSerialization) {
   uint32_t* typed_input_header =
       reinterpret_cast<uint32_t*>(input_header.data());
   ASSERT_EQ(*typed_input_header,
-            static_cast<uint32_t>(clipper::InputType::Strings));
+            static_cast<uint32_t>(clipper::DataType::Strings));
   typed_input_header++;
   uint32_t num_inputs = *typed_input_header;
   ASSERT_EQ(num_inputs, static_cast<uint32_t>(string_vector.size()));
@@ -348,21 +348,21 @@ TEST(InputSerializationTests, RpcPredictionRequestsOnlyAcceptValidInputs) {
 
   // Without error, we should be able to directly construct an integer-typed
   // PredictionRequest by supplying a vector of IntVector inputs
-  ASSERT_NO_THROW(rpc::PredictionRequest(inputs, InputType::Ints));
+  ASSERT_NO_THROW(rpc::PredictionRequest(inputs, DataType::Ints));
 
   // Without error, we should be able to add an IntVector input to
   // an integer-typed PredictionRequest
-  rpc::PredictionRequest ints_prediction_request(InputType::Ints);
+  rpc::PredictionRequest ints_prediction_request(DataType::Ints);
   ASSERT_NO_THROW(ints_prediction_request.add_input(int_vec));
 
   // We expect an invalid argument exception when we attempt to construct a
   // double-typed PredictionRequest by supplying a vector of IntVector inputs
-  ASSERT_THROW(rpc::PredictionRequest(inputs, InputType::Doubles),
+  ASSERT_THROW(rpc::PredictionRequest(inputs, DataType::Doubles),
                std::invalid_argument);
 
   // We expect an invalid argument exception when we attempt to add
   // an IntVector input to a double-typed PredictionRequest
-  rpc::PredictionRequest doubles_prediction_request(InputType::Doubles);
+  rpc::PredictionRequest doubles_prediction_request(DataType::Doubles);
   ASSERT_THROW(doubles_prediction_request.add_input(int_vec),
                std::invalid_argument);
 }

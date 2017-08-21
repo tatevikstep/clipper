@@ -6,8 +6,8 @@
 #include <string>
 #include <thread>
 
-#include <boost/thread.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/thread.hpp>
 #include <clipper/config.hpp>
 #include <clipper/constants.hpp>
 #include <clipper/logging.hpp>
@@ -26,8 +26,9 @@ std::string generate_redis_key(const StateKey& key) {
   return key_stream.str();
 }
 
-StateDB::StateDB() :
-    cache_(std::unordered_map<StateKey, std::string, StateKeyHash, StateKeyEqual>(STATE_DB_CACHE_SIZE_ELEMENTS)){
+StateDB::StateDB()
+    : cache_(std::unordered_map<StateKey, std::string, StateKeyHash,
+                                StateKeyEqual>(STATE_DB_CACHE_SIZE_ELEMENTS)) {
   Config& conf = get_config();
   while (!redis_connection_.connect(conf.get_redis_address(),
                                     conf.get_redis_port())) {
@@ -46,13 +47,14 @@ StateDB::~StateDB() { redis_connection_.disconnect(); }
 
 boost::optional<std::string> StateDB::get(const StateKey& key) {
   auto cache_search = cache_.find(key);
-  if(cache_search != cache_.end()) {
+  if (cache_search != cache_.end()) {
     return cache_search->second;
   } else {
     std::string redis_key = generate_redis_key(key);
     const std::vector<std::string> cmd_vec{"GET", redis_key};
-    auto redis_reply = redis::send_cmd_with_reply<std::string>(redis_connection_, cmd_vec);
-    if(redis_reply) {
+    auto redis_reply =
+        redis::send_cmd_with_reply<std::string>(redis_connection_, cmd_vec);
+    if (redis_reply) {
       cache_.emplace(key, redis_reply.get());
     }
     return redis_reply;

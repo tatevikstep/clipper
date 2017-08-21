@@ -42,13 +42,13 @@ std::string get_thread_id() {
 
 template <typename T, class N>
 std::vector<std::shared_ptr<Input>> get_primitive_inputs(
-    int message_size, int input_len, InputType type, std::vector<T> data_vector,
+    int message_size, int input_len, DataType type, std::vector<T> data_vector,
     std::vector<std::shared_ptr<N>> input_vector) {
   input_vector.clear();
   std::vector<std::shared_ptr<Input>> generic_input_vector;
   for (int k = 0; k < message_size; ++k) {
     for (int j = 0; j < input_len; ++j) {
-      if (type == InputType::Bytes) {
+      if (type == DataType::Bytes) {
         uint8_t *bytes = reinterpret_cast<uint8_t *>(&j);
         for (int i = 0; i < (int)(sizeof(int) / sizeof(uint8_t)); i++) {
           data_vector.push_back(*(bytes + i));
@@ -57,10 +57,13 @@ std::vector<std::shared_ptr<Input>> get_primitive_inputs(
         data_vector.push_back(static_cast<T>(j));
       }
     }
-    std::shared_ptr<T> input_data(static_cast<T*>(malloc(sizeof(T) * data_vector.size())), free);
-    memcpy(input_data.get(), data_vector.data(), data_vector.size() * sizeof(T));
+    std::shared_ptr<T> input_data(
+        static_cast<T *>(malloc(sizeof(T) * data_vector.size())), free);
+    memcpy(input_data.get(), data_vector.data(),
+           data_vector.size() * sizeof(T));
 
-    std::shared_ptr<N> input = std::make_shared<N>(input_data, data_vector.size());
+    std::shared_ptr<N> input =
+        std::make_shared<N>(input_data, data_vector.size());
     generic_input_vector.push_back(std::dynamic_pointer_cast<Input>(input));
     data_vector.clear();
   }
@@ -71,8 +74,8 @@ rpc::PredictionRequest generate_bytes_request(int message_size) {
   std::vector<uint8_t> type_vec;
   std::vector<std::shared_ptr<ByteVector>> input_vec;
   std::vector<std::shared_ptr<Input>> inputs = get_primitive_inputs(
-      message_size, 784, InputType::Bytes, type_vec, input_vec);
-  rpc::PredictionRequest request(inputs, InputType::Bytes);
+      message_size, 784, DataType::Bytes, type_vec, input_vec);
+  rpc::PredictionRequest request(inputs, DataType::Bytes);
   return request;
 }
 
@@ -80,8 +83,8 @@ rpc::PredictionRequest generate_floats_request(int message_size) {
   std::vector<float> type_vec;
   std::vector<std::shared_ptr<FloatVector>> input_vec;
   std::vector<std::shared_ptr<Input>> inputs = get_primitive_inputs(
-      message_size, 784, InputType::Floats, type_vec, input_vec);
-  rpc::PredictionRequest request(inputs, InputType::Floats);
+      message_size, 784, DataType::Floats, type_vec, input_vec);
+  rpc::PredictionRequest request(inputs, DataType::Floats);
   return request;
 }
 
@@ -89,8 +92,8 @@ rpc::PredictionRequest generate_ints_request(int message_size) {
   std::vector<int> type_vec;
   std::vector<std::shared_ptr<IntVector>> input_vec;
   std::vector<std::shared_ptr<Input>> inputs = get_primitive_inputs(
-      message_size, 784, InputType::Ints, type_vec, input_vec);
-  rpc::PredictionRequest request(inputs, InputType::Ints);
+      message_size, 784, DataType::Ints, type_vec, input_vec);
+  rpc::PredictionRequest request(inputs, DataType::Ints);
   return request;
 }
 
@@ -98,16 +101,17 @@ rpc::PredictionRequest generate_doubles_request(int message_size) {
   std::vector<double> type_vec;
   std::vector<std::shared_ptr<DoubleVector>> input_vec;
   std::vector<std::shared_ptr<Input>> inputs = get_primitive_inputs(
-      message_size, 784, InputType::Doubles, type_vec, input_vec);
-  rpc::PredictionRequest request(inputs, InputType::Doubles);
+      message_size, 784, DataType::Doubles, type_vec, input_vec);
+  rpc::PredictionRequest request(inputs, DataType::Doubles);
   return request;
 }
 
 rpc::PredictionRequest generate_string_request(int message_size) {
-  rpc::PredictionRequest request(InputType::Strings);
+  rpc::PredictionRequest request(DataType::Strings);
   for (int i = 0; i < message_size; ++i) {
     std::string str = gen_random_string(150);
-    std::shared_ptr<char> input_data(static_cast<char*>(malloc(str.length() * sizeof(char))), free);
+    std::shared_ptr<char> input_data(
+        static_cast<char *>(malloc(str.length() * sizeof(char))), free);
     memcpy(input_data.get(), str.data(), str.size());
     std::shared_ptr<SerializableString> input =
         std::make_shared<SerializableString>(input_data, str.size());
@@ -116,21 +120,21 @@ rpc::PredictionRequest generate_string_request(int message_size) {
   return request;
 }
 
-rpc::PredictionRequest create_request(InputType input_type, int message_size) {
+rpc::PredictionRequest create_request(DataType input_type, int message_size) {
   switch (input_type) {
-    case InputType::Strings: return generate_string_request(message_size);
-    case InputType::Doubles: return generate_doubles_request(message_size);
-    case InputType::Floats: return generate_floats_request(message_size);
-    case InputType::Bytes: return generate_bytes_request(message_size);
-    case InputType::Ints: return generate_ints_request(message_size);
-    case InputType::Invalid:
+    case DataType::Strings: return generate_string_request(message_size);
+    case DataType::Doubles: return generate_doubles_request(message_size);
+    case DataType::Floats: return generate_floats_request(message_size);
+    case DataType::Bytes: return generate_bytes_request(message_size);
+    case DataType::Ints: return generate_ints_request(message_size);
+    case DataType::Invalid:
     default: throw std::invalid_argument("Unsupported input type");
   }
 }
 
 class Benchmarker {
  public:
-  Benchmarker(int num_messages, int message_size, InputType input_type)
+  Benchmarker(int num_messages, int message_size, DataType input_type)
       : num_messages_(num_messages),
         rpc_(std::make_unique<rpc::RPCService>()),
         request_(create_request(input_type, message_size)) {}
@@ -266,7 +270,7 @@ int main(int argc, char *argv[]) {
   conf.set_redis_address(options["redis_ip"].as<std::string>());
   conf.set_redis_port(options["redis_port"].as<int>());
   conf.ready();
-  InputType input_type =
+  DataType input_type =
       clipper::parse_input_type(options["input_type"].as<std::string>());
   Benchmarker benchmarker(options["num_messages"].as<int>(),
                           options["message_size"].as<int>(), input_type);

@@ -229,7 +229,7 @@ std::vector<std::string> get_linked_models(redox::Redox& redis,
 }
 
 bool add_model(Redox& redis, const VersionedModelId& model_id,
-               const InputType& input_type, const vector<string>& labels,
+               const DataType& input_type, const vector<string>& labels,
                const std::string& container_name,
                const std::string& model_data_path) {
   if (send_cmd_no_reply<string>(
@@ -343,7 +343,7 @@ std::vector<VersionedModelId> get_all_models(redox::Redox& redis) {
 
 bool add_container(Redox& redis, const VersionedModelId& model_id,
                    const int model_replica_id, const int zmq_connection_id,
-                   const InputType& input_type) {
+                   const DataType& input_type) {
   if (send_cmd_no_reply<string>(
           redis, {"SELECT", std::to_string(REDIS_CONTAINER_DB_NUM)})) {
     std::string replica_key = gen_model_replica_key(model_id, model_replica_id);
@@ -433,7 +433,7 @@ std::vector<std::pair<VersionedModelId, int>> get_all_containers(
 }
 
 bool add_application(redox::Redox& redis, const std::string& appname,
-                     const InputType& input_type, const std::string& policy,
+                     const DataType& input_type, const std::string& policy,
                      const std::string& default_output,
                      const long latency_slo_micros) {
   if (send_cmd_no_reply<string>(

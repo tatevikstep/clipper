@@ -113,11 +113,12 @@ class Tester {
                 log_start_time.time_since_epoch())
                 .count()) /
         1000;
-    std::shared_ptr<double> data(static_cast<double*>(malloc(sizeof(double))), free);
+    std::shared_ptr<double> data(static_cast<double *>(malloc(sizeof(double))),
+                                 free);
     data.get()[0] = log_start_time_millis;
 
     std::shared_ptr<Input> input = std::make_shared<DoubleVector>(data, 1);
-    rpc::PredictionRequest request(InputType::Doubles);
+    rpc::PredictionRequest request(DataType::Doubles);
     request.add_input(input);
     auto serialized_request = request.serialize();
     int msg_id = rpc_->send_message(serialized_request, container_id);
@@ -195,9 +196,11 @@ class Tester {
       rpc::PredictionResponse prediction_response =
           rpc::PredictionResponse::deserialize_prediction_response(
               response.second);
-      std::string event_history_str = std::string(
-          std::get<0>(prediction_response.outputs_[0]).get() + std::get<1>(prediction_response.outputs_[0]),
-          std::get<0>(prediction_response.outputs_[0]).get() + std::get<2>(prediction_response.outputs_[0]));
+      std::string event_history_str =
+          std::string(std::get<0>(prediction_response.outputs_[0]).get() +
+                          std::get<1>(prediction_response.outputs_[0]),
+                      std::get<0>(prediction_response.outputs_[0]).get() +
+                          std::get<2>(prediction_response.outputs_[0]));
       rapidjson::Document d;
       json::parse_json(event_history_str, d);
       auto events = d.GetArray();

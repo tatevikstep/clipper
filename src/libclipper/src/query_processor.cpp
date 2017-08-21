@@ -65,7 +65,7 @@ folly::Future<Response> QueryProcessor::predict(Query query) {
     throw PredictError(err_msg);
   }
 
-  if(!selection_state_) {
+  if (!selection_state_) {
     selection_state_ = current_policy->deserialize(*state_opt);
   }
 
@@ -130,9 +130,9 @@ folly::Future<Response> QueryProcessor::predict(Query query) {
   folly::Future<Response> response_future = response_promise.getFuture();
 
   response_ready_future.then([
-    outputs_ptr, outputs_mutex, num_tasks, query, query_id, selection_state=selection_state_,
-    current_policy, response_promise = std::move(response_promise),
-    default_explanation
+    outputs_ptr, outputs_mutex, num_tasks, query, query_id,
+    selection_state = selection_state_, current_policy,
+    response_promise = std::move(response_promise), default_explanation
   ](const std::pair<size_t,
                     folly::Try<folly::Unit>>& /* completed_future */) mutable {
     std::lock_guard<std::mutex> outputs_lock(*outputs_mutex);

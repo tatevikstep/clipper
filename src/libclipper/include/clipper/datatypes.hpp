@@ -17,7 +17,7 @@ typedef std::pair<std::shared_ptr<uint8_t>, size_t> ByteBuffer;
 using QueryId = long;
 using FeedbackAck = bool;
 
-enum class InputType {
+enum class DataType {
   Invalid = -1,
   Bytes = 0,
   Ints = 1,
@@ -31,8 +31,8 @@ enum class RequestType {
   FeedbackRequest = 1,
 };
 
-std::string get_readable_input_type(InputType type);
-InputType parse_input_type(std::string type_string);
+std::string get_readable_input_type(DataType type);
+DataType parse_input_type(std::string type_string);
 
 class VersionedModelId {
  public:
@@ -62,7 +62,7 @@ class Input {
   // TODO: pure virtual or default?
   // virtual ~Input() = default;
 
-  virtual InputType type() const = 0;
+  virtual DataType type() const = 0;
 
   /**
    * Serializes input and writes resulting data to provided buffer.
@@ -95,7 +95,7 @@ class ByteVector : public Input {
   ByteVector(ByteVector &&other) = default;
   ByteVector &operator=(ByteVector &&other) = default;
 
-  InputType type() const override;
+  DataType type() const override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -120,7 +120,7 @@ class IntVector : public Input {
   IntVector(IntVector &&other) = default;
   IntVector &operator=(IntVector &&other) = default;
 
-  InputType type() const override;
+  DataType type() const override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -131,7 +131,6 @@ class IntVector : public Input {
  private:
   const std::shared_ptr<int> data_;
   const size_t size_;
-
 };
 
 class FloatVector : public Input {
@@ -146,7 +145,7 @@ class FloatVector : public Input {
   FloatVector(FloatVector &&other) = default;
   FloatVector &operator=(FloatVector &&other) = default;
 
-  InputType type() const override;
+  DataType type() const override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -171,7 +170,7 @@ class DoubleVector : public Input {
   DoubleVector(DoubleVector &&other) = default;
   DoubleVector &operator=(DoubleVector &&other) = default;
 
-  InputType type() const override;
+  DataType type() const override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -196,7 +195,7 @@ class SerializableString : public Input {
   SerializableString(SerializableString &&other) = default;
   SerializableString &operator=(SerializableString &&other) = default;
 
-  InputType type() const override;
+  DataType type() const override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -322,13 +321,159 @@ class FeedbackTask {
   long latency_slo_micros_;
 };
 
+class OutputData {
+ public:
+  virtual DataType type() const = 0;
+
+  /**
+   * Serializes input and writes resulting data to provided buffer.
+   *
+   * The serialization methods are used for RPC.
+   */
+  virtual size_t serialize(void *buf) const = 0;
+
+  virtual size_t hash() const = 0;
+
+  /**
+   * @return The number of elements in the output
+   */
+  virtual size_t size() const = 0;
+  /**
+   * @return The size of the output data in bytes
+   */
+  virtual size_t byte_size() const = 0;
+
+  static std::shared_ptr<OutputData> create_output(DataType type,
+                                                   std::shared_ptr<void> data,
+                                                   size_t start, size_t end);
+};
+
+class FloatVectorOutput : public OutputData {
+ public:
+  explicit FloatVectorOutput(std::shared_ptr<float> data, size_t start,
+                             size_t end);
+
+  // Disallow copy
+  FloatVectorOutput(FloatVectorOutput &other) = delete;
+  FloatVectorOutput &operator=(FloatVectorOutput &other) = delete;
+
+  // move constructors
+  FloatVectorOutput(FloatVectorOutput &&other) = default;
+  FloatVectorOutput &operator=(FloatVectorOutput &&other) = default;
+
+  DataType type() const override;
+  size_t serialize(void *buf) const override;
+  size_t hash() const override;
+  size_t size() const override;
+  size_t byte_size() const override;
+
+ private:
+  const std::shared_ptr<float> data_;
+  const size_t start_;
+  const size_t end_;
+};
+
+class IntVectorOutput : public OutputData {
+ public:
+  explicit IntVectorOutput(std::shared_ptr<int> data, size_t start, size_t end);
+
+  // Disallow copy
+  IntVectorOutput(IntVectorOutput &other) = delete;
+  IntVectorOutput &operator=(IntVectorOutput &other) = delete;
+
+  // move constructors
+  IntVectorOutput(IntVectorOutput &&other) = default;
+  IntVectorOutput &operator=(IntVectorOutput &&other) = default;
+
+  DataType type() const override;
+  size_t serialize(void *buf) const override;
+  size_t hash() const override;
+  size_t size() const override;
+  size_t byte_size() const override;
+
+ private:
+  const std::shared_ptr<int> data_;
+  const size_t start_;
+  const size_t end_;
+};
+
+class ByteVectorOutput : public OutputData {
+ public:
+  explicit ByteVectorOutput(std::shared_ptr<uint8_t> data, size_t start,
+                            size_t end);
+
+  // Disallow copy
+  ByteVectorOutput(ByteVectorOutput &other) = delete;
+  ByteVectorOutput &operator=(ByteVectorOutput &other) = delete;
+
+  // move constructors
+  ByteVectorOutput(ByteVectorOutput &&other) = default;
+  ByteVectorOutput &operator=(ByteVectorOutput &&other) = default;
+
+  DataType type() const override;
+  size_t serialize(void *buf) const override;
+  size_t hash() const override;
+  size_t size() const override;
+  size_t byte_size() const override;
+
+ private:
+  const std::shared_ptr<uint8_t> data_;
+  const size_t start_;
+  const size_t end_;
+};
+
+class StringOutput : public OutputData {
+ public:
+  explicit StringOutput(std::shared_ptr<char> data, size_t start, size_t end);
+
+  // Disallow copy
+  StringOutput(StringOutput &other) = delete;
+  StringOutput &operator=(StringOutput &other) = delete;
+
+  // move constructors
+  StringOutput(StringOutput &&other) = default;
+  StringOutput &operator=(StringOutput &&other) = default;
+
+  DataType type() const override;
+  size_t serialize(void *buf) const override;
+  size_t hash() const override;
+  size_t size() const override;
+  size_t byte_size() const override;
+
+ private:
+  const std::shared_ptr<char> data_;
+  const size_t start_;
+  const size_t end_;
+};
+
+class Output {
+ public:
+  Output(const std::shared_ptr<OutputData> y_hat,
+         const std::vector<VersionedModelId> models_used);
+
+  ~Output() = default;
+
+  explicit Output() = default;
+  Output(const Output &) = default;
+  Output &operator=(const Output &) = default;
+
+  Output(Output &&) = default;
+  Output &operator=(Output &&) = default;
+
+  bool operator==(const Output &rhs) const;
+  bool operator!=(const Output &rhs) const;
+
+  std::shared_ptr<OutputData> y_hat_;
+  std::vector<VersionedModelId> models_used_;
+};
+
 namespace rpc {
 
 class PredictionRequest {
  public:
-  explicit PredictionRequest(InputType input_type);
+  explicit PredictionRequest(DataType input_type);
   explicit PredictionRequest(std::vector<std::shared_ptr<Input>> inputs,
-                             InputType input_type);
+                             DataType input_type);
 
   // Disallow copy
   PredictionRequest(PredictionRequest &other) = delete;
@@ -345,16 +490,13 @@ class PredictionRequest {
   void validate_input_type(std::shared_ptr<Input> &input) const;
 
   std::vector<std::shared_ptr<Input>> inputs_;
-  InputType input_type_;
+  DataType input_type_;
   size_t input_data_size_ = 0;
 };
 
-// Tuple of data_pointer, data_start_index, data_end_index
-typedef std::tuple<std::shared_ptr<char>, size_t, size_t>  PredictionOutput;
-
 class PredictionResponse {
  public:
-  PredictionResponse(const std::vector<PredictionOutput> outputs);
+  PredictionResponse(const std::vector<std::shared_ptr<OutputData>> outputs);
 
   // Disallow copy
   PredictionResponse(PredictionResponse &other) = delete;
@@ -364,33 +506,13 @@ class PredictionResponse {
   PredictionResponse(PredictionResponse &&other) = default;
   PredictionResponse &operator=(PredictionResponse &&other) = default;
 
-  static PredictionResponse deserialize_prediction_response(std::shared_ptr<char>& response_data);
+  static PredictionResponse deserialize_prediction_response(
+      DataType data_type, std::shared_ptr<void> &data);
 
-  std::vector<PredictionOutput> outputs_;
+  const std::vector<std::shared_ptr<OutputData>> outputs_;
 };
 
 }  // namespace rpc
-
-class Output {
- public:
-  Output(const rpc::PredictionOutput y_hat,
-         const std::vector<VersionedModelId> models_used);
-
-  ~Output() = default;
-
-  explicit Output() = default;
-  Output(const Output &) = default;
-  Output &operator=(const Output &) = default;
-
-  Output(Output &&) = default;
-  Output &operator=(Output &&) = default;
-
-  bool operator==(const Output &rhs) const;
-  bool operator!=(const Output &rhs) const;
-
-  rpc::PredictionOutput y_hat_;
-  std::vector<VersionedModelId> models_used_;
-};
 
 class Response {
  public:
@@ -407,8 +529,6 @@ class Response {
   // default move constructors
   Response(Response &&) = default;
   Response &operator=(Response &&) = default;
-
-  std::string debug_string() const noexcept;
 
   Query query_;
   QueryId query_id_;

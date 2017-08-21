@@ -27,11 +27,12 @@ namespace rpc {
 
 const std::string LOGGING_TAG_RPC = "RPC";
 
-using RPCResponse = std::pair<const int, std::shared_ptr<char>>;
+// Tuple of msg_id, data_type, binary data
+using RPCResponse = std::tuple<const int, DataType, std::shared_ptr<void>>;
+
 /// Tuple of zmq_connection_id, message_id, vector of messages, creation time
 using RPCRequest =
-    std::tuple<const int, const int, const std::vector<ByteBuffer>,
-               const long>;
+    std::tuple<const int, const int, const std::vector<ByteBuffer>, const long>;
 
 enum class RPCEvent {
   SentHeartbeat = 1,
@@ -80,13 +81,14 @@ class RPCService {
   * The messages will be sent as a single, multi-part ZeroMQ message so
   * it is very efficient.
   */
-  int send_message(const std::vector<ByteBuffer>& msg,
+  int send_message(const std::vector<ByteBuffer> &msg,
                    const int zmq_connection_id);
 
  private:
   void manage_service(const string address);
   void send_messages(socket_t &socket,
-                     boost::bimap<int, vector<uint8_t>> &connections, int num_messages);
+                     boost::bimap<int, vector<uint8_t>> &connections,
+                     int num_messages);
 
   void receive_message(
       socket_t &socket, boost::bimap<int, vector<uint8_t>> &connections,

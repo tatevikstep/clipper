@@ -123,7 +123,7 @@ boost::optional<std::string> get_current_model_version(
  * \return Returns true if the add was successful.
  */
 bool add_model(redox::Redox& redis, const VersionedModelId& model_id,
-               const InputType& input_type,
+               const DataType& input_type,
                const std::vector<std::string>& labels,
                const std::string& container_name,
                const std::string& model_data_path);
@@ -195,7 +195,7 @@ std::vector<std::string> get_linked_models(redox::Redox& redis,
  */
 bool add_container(redox::Redox& redis, const VersionedModelId& model_id,
                    const int model_replica_id, const int zmq_connection_id,
-                   const InputType& input_type);
+                   const DataType& input_type);
 
 /**
  * Deletes a container from the container table if it exists.
@@ -257,7 +257,7 @@ std::vector<std::pair<VersionedModelId, int>> get_all_containers(
  * \return Returns true of the add was successful.
  */
 bool add_application(redox::Redox& redis, const std::string& app_name,
-                     const InputType& input_type, const std::string& policy,
+                     const DataType& input_type, const std::string& policy,
                      const std::string& default_output,
                      const long latency_slo_micros);
 

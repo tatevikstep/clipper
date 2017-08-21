@@ -8,7 +8,7 @@ namespace {
 
 TEST(ModelContainerTests, AverageThroughputUpdatesCorrectlyFewSamples) {
   VersionedModelId model("test", "1");
-  ModelContainer container(model, 0, 0, InputType::Doubles);
+  ModelContainer container(model, 0, 0, DataType::Doubles);
   std::array<long, 4> single_task_latencies_micros = {{500, 2000, 3000, 5000}};
   long avg_latency = 0;
   double avg_throughput_millis = 0;
@@ -25,7 +25,7 @@ TEST(ModelContainerTests, AverageThroughputUpdatesCorrectlyFewSamples) {
 
 TEST(ModelContainerTests, AverageThroughputUpdatesCorrectlyManySamples) {
   VersionedModelId model("test", "1");
-  ModelContainer container(model, 0, 0, InputType::Doubles);
+  ModelContainer container(model, 0, 0, DataType::Doubles);
   double avg_throughput_millis = 0;
   for (int i = 3; i < 103; i++) {
     double throughput_millis = 1 / static_cast<double>(1000 * i);
@@ -46,7 +46,7 @@ TEST(ActiveContainerTests, AddContainer) {
   std::shared_ptr<ActiveContainers> active_containers =
       std::make_shared<ActiveContainers>();
 
-  active_containers->add_container(m1, conn_id, rep_id, InputType::Doubles);
+  active_containers->add_container(m1, conn_id, rep_id, DataType::Doubles);
   std::shared_ptr<ModelContainer> result =
       active_containers->get_model_replica(m1, rep_id);
   ASSERT_EQ(result->model_, m1);
@@ -64,13 +64,13 @@ TEST(ActiveContainerTests, AddMultipleContainersDifferentModels) {
   std::shared_ptr<ActiveContainers> active_containers =
       std::make_shared<ActiveContainers>();
 
-  active_containers->add_container(m1, m1conn_id, m1rep_id, InputType::Doubles);
+  active_containers->add_container(m1, m1conn_id, m1rep_id, DataType::Doubles);
   std::shared_ptr<ModelContainer> m1result =
       active_containers->get_model_replica(m1, m1rep_id);
   ASSERT_EQ(m1result->model_, m1);
   ASSERT_EQ(m1result->container_id_, m1conn_id);
 
-  active_containers->add_container(j1, j1conn_id, j1rep_id, InputType::Doubles);
+  active_containers->add_container(j1, j1conn_id, j1rep_id, DataType::Doubles);
   std::shared_ptr<ModelContainer> m1result2 =
       active_containers->get_model_replica(m1, m1rep_id);
   ASSERT_EQ(m1result2->model_, m1);
@@ -93,10 +93,10 @@ TEST(ActiveContainerTests, AddMultipleContainersSameModelSameVersion) {
       std::make_shared<ActiveContainers>();
 
   active_containers->add_container(vm, firstconn_id, firstrep_id,
-                                   InputType::Doubles);
+                                   DataType::Doubles);
 
   active_containers->add_container(vm, secondconn_id, secondrep_id,
-                                   InputType::Doubles);
+                                   DataType::Doubles);
 
   std::shared_ptr<ModelContainer> secondresult =
       active_containers->get_model_replica(vm, secondrep_id);
@@ -121,10 +121,10 @@ TEST(ActiveContainerTests, AddMultipleContainersSameModelDifferentVersions) {
       std::make_shared<ActiveContainers>();
 
   active_containers->add_container(vm1, firstconn_id, firstrep_id,
-                                   InputType::Doubles);
+                                   DataType::Doubles);
 
   active_containers->add_container(vm2, secondconn_id, secondrep_id,
-                                   InputType::Doubles);
+                                   DataType::Doubles);
 
   std::shared_ptr<ModelContainer> secondresult =
       active_containers->get_model_replica(vm2, secondrep_id);

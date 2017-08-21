@@ -51,7 +51,8 @@ std::unordered_map<std::string, std::string> get_config_from_json(
   return responses;
 }
 
-std::unordered_map<int, std::vector<std::shared_ptr<double>>> load_cifar2(std::string &cifar_data_path) {
+std::unordered_map<int, std::vector<std::shared_ptr<double>>> load_cifar2(
+    std::string &cifar_data_path) {
   // A loose check to ensure that the binary dataset (not the python-compatible
   // dataset) is being used
   if (cifar_data_path.find(".bin") == std::string::npos) {
@@ -65,15 +66,16 @@ std::unordered_map<int, std::vector<std::shared_ptr<double>>> load_cifar2(std::s
   std::unordered_map<int, std::vector<std::shared_ptr<double>>> vecs_map;
 
   int i = 0;
-  while(cifar_file && i < NUM_CIFAR_DATAPOINTS) {
+  while (cifar_file && i < NUM_CIFAR_DATAPOINTS) {
     char label_char;
     cifar_file.get(label_char);
     int label = static_cast<int>(label_char);
-    char* cifar_vec_raw = static_cast<char*>(malloc(NUM_CIFAR_FEATURES));
+    char *cifar_vec_raw = static_cast<char *>(malloc(NUM_CIFAR_FEATURES));
     cifar_file.read(cifar_vec_raw, NUM_CIFAR_FEATURES);
-    std::shared_ptr<double> cifar_vec(reinterpret_cast<double*>(cifar_vec_raw), free);
+    std::shared_ptr<double> cifar_vec(reinterpret_cast<double *>(cifar_vec_raw),
+                                      free);
     auto label_vecs_search = vecs_map.find(label);
-    if(label_vecs_search == vecs_map.end()) {
+    if (label_vecs_search == vecs_map.end()) {
       std::vector<std::shared_ptr<double>> new_label_vecs;
       new_label_vecs.push_back(std::move(cifar_vec));
       vecs_map.emplace(label, new_label_vecs);

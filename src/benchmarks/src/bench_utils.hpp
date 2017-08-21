@@ -46,7 +46,6 @@ std::unordered_map<int, std::vector<std::shared_ptr<double>>> load_cifar2(
 std::vector<std::shared_ptr<double>> concatenate_cifar_datapoints(
     std::unordered_map<int, std::vector<std::shared_ptr<double>>> cifar_data);
 
-
 /**
  * Returns the value corresponding to `key` in `config` as a string
  */

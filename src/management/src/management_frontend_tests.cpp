@@ -457,7 +457,7 @@ TEST_F(ManagementFrontendTest, TestAddModelCorrect) {
   ASSERT_EQ(*get_current_model_version(*redis_, model_name), model_version);
 }
 
-TEST_F(ManagementFrontendTest, TestAddLinkedModelCompatibleInputType) {
+TEST_F(ManagementFrontendTest, TestAddLinkedModelCompatibleDataType) {
   std::string app_name = "myappname";
   std::string input_type = "integers";
   std::string default_output = "4.3";
@@ -715,7 +715,7 @@ TEST_F(ManagementFrontendTest, TestAddModelLinkCorrect) {
   ASSERT_EQ(model_names, result);
 }
 
-TEST_F(ManagementFrontendTest, TestAddModelLinkIncompatibleInputType) {
+TEST_F(ManagementFrontendTest, TestAddModelLinkIncompatibleDataType) {
   std::string app_name = "myappname";
   std::string app_input_type = "integers";
   std::string default_output = "4.3";
@@ -741,7 +741,7 @@ TEST_F(ManagementFrontendTest, TestAddModelLinkIncompatibleInputType) {
   ASSERT_THROW(rh_.add_model_links(add_links_json), std::invalid_argument);
 }
 
-TEST_F(ManagementFrontendTest, TestAddNewLinkedModelIncompatibleInputType) {
+TEST_F(ManagementFrontendTest, TestAddNewLinkedModelIncompatibleDataType) {
   std::string app_name = "myappname";
   std::string input_type = "integers";
   std::string default_output = "4.3";
@@ -774,7 +774,7 @@ TEST_F(ManagementFrontendTest, TestAddNewLinkedModelIncompatibleInputType) {
 }
 
 TEST_F(ManagementFrontendTest,
-       TestSetModellVersionForLinkedModelIncompatibleInputType) {
+       TestSetModellVersionForLinkedModelIncompatibleDataType) {
   std::string app_name = "myappname";
   std::string input_type = "integers";
   std::string default_output = "4.3";

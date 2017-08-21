@@ -17,7 +17,7 @@
 #include <clipper/redis.hpp>
 
 using clipper::Input;
-using clipper::InputType;
+using clipper::DataType;
 using clipper::Output;
 using clipper::VersionedModelId;
 using rapidjson::Type;
@@ -246,8 +246,9 @@ rapidjson::Value& get_object(rapidjson::Value& d, const char* key_name) {
   return object;
 }
 
-void parse_json(const std::string& json_content, rapidjson::Document& d) {
-  rapidjson::ParseResult ok = d.Parse(json_content.c_str());
+void parse_json(const char* json_content, size_t length,
+                rapidjson::Document& d) {
+  rapidjson::ParseResult ok = d.Parse(json_content, length);
   if (!ok) {
     std::stringstream ss;
     ss << "JSON parse error: " << rapidjson::GetParseError_En(ok.Code())
@@ -256,36 +257,48 @@ void parse_json(const std::string& json_content, rapidjson::Document& d) {
   }
 }
 
-std::shared_ptr<Input> parse_input(InputType input_type, rapidjson::Value& d) {
+void parse_json(const std::string& json_content, rapidjson::Document& d) {
+  const char* content_data = json_content.c_str();
+  parse_json(content_data, std::strlen(content_data), d);
+}
+
+std::shared_ptr<Input> parse_input(DataType input_type, rapidjson::Value& d) {
   switch (input_type) {
-    case InputType::Doubles: {
+    case DataType::Doubles: {
       std::vector<double> inputs = get_double_array(d, "input");
-      std::shared_ptr<double> vec_data(static_cast<double*>(malloc(inputs.size() * sizeof(double))), free);
+      std::shared_ptr<double> vec_data(
+          static_cast<double*>(malloc(inputs.size() * sizeof(double))), free);
       memcpy(vec_data.get(), inputs.data(), inputs.size() * sizeof(double));
 
       return std::make_shared<clipper::DoubleVector>(vec_data, inputs.size());
     }
-    case InputType::Floats: {
+    case DataType::Floats: {
       std::vector<float> inputs = get_float_array(d, "input");
-      std::shared_ptr<float> vec_data(static_cast<float*>(malloc(inputs.size() * sizeof(float))), free);
+      std::shared_ptr<float> vec_data(
+          static_cast<float*>(malloc(inputs.size() * sizeof(float))), free);
       memcpy(vec_data.get(), inputs.data(), inputs.size() * sizeof(float));
       return std::make_shared<clipper::FloatVector>(vec_data, inputs.size());
     }
-    case InputType::Ints: {
+    case DataType::Ints: {
       std::vector<int> inputs = get_int_array(d, "input");
-      std::shared_ptr<int> vec_data(static_cast<int*>(malloc(inputs.size() * sizeof(int))), free);
+      std::shared_ptr<int> vec_data(
+          static_cast<int*>(malloc(inputs.size() * sizeof(int))), free);
       memcpy(vec_data.get(), inputs.data(), inputs.size() * sizeof(int));
       return std::make_shared<clipper::IntVector>(vec_data, inputs.size());
     }
-    case InputType::Strings: {
+    case DataType::Strings: {
       std::string input_string = get_string(d, "input");
-      std::shared_ptr<char> vec_data(static_cast<char*>(malloc(input_string.size() * sizeof(char))), free);
-      memcpy(vec_data.get(), input_string.data(), input_string.size() * sizeof(char));
-      return std::make_shared<clipper::SerializableString>(vec_data, input_string.size());
+      std::shared_ptr<char> vec_data(
+          static_cast<char*>(malloc(input_string.size() * sizeof(char))), free);
+      memcpy(vec_data.get(), input_string.data(),
+             input_string.size() * sizeof(char));
+      return std::make_shared<clipper::SerializableString>(vec_data,
+                                                           input_string.size());
     }
-    case InputType::Bytes: {
+    case DataType::Bytes: {
       std::vector<uint8_t> inputs = get_base64_encoded_byte_array(d, "input");
-      std::shared_ptr<uint8_t> vec_data(static_cast<uint8_t*>(malloc(inputs.size())), free);
+      std::shared_ptr<uint8_t> vec_data(
+          static_cast<uint8_t*>(malloc(inputs.size())), free);
       return std::make_shared<clipper::ByteVector>(vec_data, inputs.size());
     }
     default: throw std::invalid_argument("input_type is not a valid type");
@@ -310,6 +323,20 @@ void add_bool(rapidjson::Document& d, const char* key_name, bool value_to_add) {
   rapidjson::Document boolean_doc;
   boolean_doc.SetBool(value_to_add);
   add_kv_pair(d, key_name, boolean_doc);
+}
+
+void add_byte_array(rapidjson::Document& d, const char* key_name,
+                    std::vector<uint8_t>& values_to_add) {
+  char* decoded_str = reinterpret_cast<char*>(values_to_add.data());
+  size_t decoded_length = values_to_add.size() * sizeof(char);
+  size_t encoded_length =
+      static_cast<size_t>(Base64::EncodedLength(decoded_length));
+  char* encoded_str = static_cast<char*>(malloc(encoded_length));
+  Base64 encoder;
+  encoder.Encode(decoded_str, decoded_length, encoded_str, encoded_length);
+  rapidjson::Value val_to_add(encoded_str, static_cast<int>(encoded_length),
+                              d.GetAllocator());
+  add_kv_pair(d, key_name, val_to_add);
 }
 
 void add_double_array(rapidjson::Document& d, const char* key_name,
@@ -373,13 +400,15 @@ void add_long(rapidjson::Document& d, const char* key_name, long val) {
   add_kv_pair(d, key_name, val_to_add);
 }
 
+void add_string(rapidjson::Document& d, const char* key_name, const char* val,
+                size_t length) {
+  rapidjson::Value val_to_add(val, static_cast<int>(length), d.GetAllocator());
+  add_kv_pair(d, key_name, val_to_add);
+}
+
 void add_string(rapidjson::Document& d, const char* key_name,
                 const std::string& val) {
-  // We specify the string length in the second parameter to prevent
-  // strings containing null terminators from being prematurely truncated
-  rapidjson::Value val_to_add(val.c_str(), static_cast<int>(val.length()),
-                              d.GetAllocator());
-  add_kv_pair(d, key_name, val_to_add);
+  add_string(d, key_name, val.c_str(), val.length());
 }
 
 void add_object(rapidjson::Document& d, const char* key_name,

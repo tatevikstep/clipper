@@ -7,12 +7,12 @@
 #include <folly/futures/Future.h>
 #include <cxxopts.hpp>
 
+#include <clipper/config.hpp>
 #include <clipper/constants.hpp>
 #include <clipper/datatypes.hpp>
 #include <clipper/json_util.hpp>
 #include <clipper/logging.hpp>
 #include <clipper/query_processor.hpp>
-#include <clipper/config.hpp>
 
 #include "bench_utils.hpp"
 
@@ -48,7 +48,8 @@ std::string get_window_str(int window_lower, int window_upper) {
 }
 
 void send_predictions(std::unordered_map<std::string, std::string> &config,
-                      QueryProcessor &qp, std::vector<std::shared_ptr<double>> data,
+                      QueryProcessor &qp,
+                      std::vector<std::shared_ptr<double>> data,
                       BenchMetrics &bench_metrics, int thread_id) {
   int num_batches = get_int(NUM_BATCHES, config);
   int request_batch_size = get_int(REQUEST_BATCH_SIZE, config);
@@ -77,7 +78,8 @@ void send_predictions(std::unordered_map<std::string, std::string> &config,
         query_vec.get()[1] = thread_id;
       }
 
-      std::shared_ptr<Input> input = std::make_shared<DoubleVector>(query_vec, 3072 / sizeof(double));
+      std::shared_ptr<Input> input =
+          std::make_shared<DoubleVector>(query_vec, 3072 / sizeof(double));
       Query q = {TEST_APPLICATION_LABEL,
                  UID,
                  input,
@@ -182,9 +184,12 @@ void run_benchmark(std::unordered_map<std::string, std::string> &config) {
   std::this_thread::sleep_for(std::chrono::seconds(3));
 
   clipper::DefaultOutputSelectionPolicy p;
-  std::shared_ptr<char> default_output_content(static_cast<char*>(malloc(DEFAULT_OUTPUT.size())), free);
-  memcpy(default_output_content.get(), DEFAULT_OUTPUT.data(), DEFAULT_OUTPUT.size());
-  clipper::Output parsed_default_output(std::make_tuple(default_output_content, 0, DEFAULT_OUTPUT.size()), {});
+  std::shared_ptr<char> default_output_content(
+      static_cast<char *>(malloc(DEFAULT_OUTPUT.size())), free);
+  memcpy(default_output_content.get(), DEFAULT_OUTPUT.data(),
+         DEFAULT_OUTPUT.size());
+  clipper::Output parsed_default_output(
+      std::make_tuple(default_output_content, 0, DEFAULT_OUTPUT.size()), {});
   auto init_state = p.init_state(parsed_default_output);
   clipper::StateKey state_key{TEST_APPLICATION_LABEL, clipper::DEFAULT_USER_ID,
                               0};
@@ -248,7 +253,7 @@ int main(int argc, char *argv[]) {
   options.parse(argc, argv);
   bool json_specified = (options.count("filename") > 0);
 
-  Config& conf = get_config();
+  Config &conf = get_config();
   conf.set_rpc_max_recv(options["rpc_recv_max"].as<int>());
   conf.set_rpc_max_send(options["rpc_send_max"].as<int>());
   conf.ready();

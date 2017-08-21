@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 using clipper::Input;
-using clipper::InputType;
+using clipper::DataType;
 using clipper::Output;
 using clipper::VersionedModelId;
 using rapidjson::Type;
@@ -89,15 +89,25 @@ std::vector<VersionedModelId> get_candidate_models(rapidjson::Value& d,
 
 rapidjson::Value& get_object(rapidjson::Value& d, const char* key_name);
 
+void parse_json(const char* json_content, size_t length,
+                rapidjson::Document& d);
+
 void parse_json(const std::string& json_content, rapidjson::Document& d);
 
-std::shared_ptr<Input> parse_input(InputType input_type, rapidjson::Value& d);
+std::shared_ptr<Input> parse_input(DataType input_type, rapidjson::Value& d);
 
 /* Utilities for serialization into JSON */
 void add_kv_pair(rapidjson::Document& d, const char* key_name,
                  rapidjson::Value& value_to_add);
 
 void add_bool(rapidjson::Document& d, const char* key_name, bool value_to_add);
+
+/**
+ * Base64-encodes a byte array and adds the resulting string
+ * to the specified JSON document
+ */
+void add_byte_array(rapidjson::Document& d, const char* key_name,
+                    std::vector<uint8_t>& values_to_add);
 
 void add_double_array(rapidjson::Document& d, const char* key_name,
                       std::vector<double>& values_to_add);
@@ -118,6 +128,9 @@ void add_float(rapidjson::Document& d, const char* key_name, float val);
 void add_int(rapidjson::Document& d, const char* key_name, int val);
 
 void add_long(rapidjson::Document& d, const char* key_name, long val);
+
+void add_string(rapidjson::Document& d, const char* key_name, const char* val,
+                size_t length);
 
 void add_string(rapidjson::Document& d, const char* key_name,
                 const std::string& val);
