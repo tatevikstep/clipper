@@ -13,7 +13,7 @@ import time
 import clipper_frontend_pb2
 import clipper_frontend_pb2_grpc
 
-#from clipper_admin import Clipper
+from clipper_admin import Clipper
 
 DATA_TYPE_BYTES = 0
 DATA_TYPE_INTS = 1
