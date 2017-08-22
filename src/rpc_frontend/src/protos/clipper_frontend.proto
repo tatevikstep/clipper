@@ -7,30 +7,51 @@ syntax = "proto3";
 
 package clipper.grpc;
 
-service Predict {
-  rpc PredictFloats(PredictRequest) returns (PredictResponse) {
-  }
+option cc_enable_arenas = true;
 
-  // rpc PredictStrings(StringInput) returns (PredictResponse) {
-  // }
+service Predict {
+  rpc Predict(PredictRequest) returns (PredictResponse) {
+  }
 }
 
-// // The request message containing the user's name.
-// message StringInput {
-//   string input = 1;
-// }
+message ByteData {
+    bytes data = 1;
+}
 
-// The response message containing the greetings
-message FloatsInput {
-  repeated float input = 1;
+message IntData {
+    repeated int32 data = 1;
+}
+
+message FloatData {
+    repeated float data = 1;
+}
+
+message DoubleData {
+    repeated double data = 1;
+}
+
+message StringData {
+    string data = 1;
 }
 
 message PredictRequest {
   string application = 1;
-  FloatsInput input = 2;
+  int32 data_type = 2;
+  ByteData byte_data = 3;
+  IntData int_data = 4;
+  FloatData float_data = 5;
+  DoubleData double_data = 6;
+  StringData string_data = 7;
 }
 
-// The request message containing the user's name.
 message PredictResponse {
-  string output = 1;
+  bool has_error = 1;
+  string error = 2;
+  bool is_default = 3;
+  string default_explanation = 4;
+  int32 data_type = 5;
+  ByteData byte_data = 6;
+  IntData int_data = 7;
+  FloatData float_data = 8;
+  StringData string_data = 9;
 }

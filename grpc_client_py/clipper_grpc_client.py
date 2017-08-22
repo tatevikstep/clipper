@@ -13,7 +13,14 @@ import time
 import clipper_frontend_pb2
 import clipper_frontend_pb2_grpc
 
-from clipper_admin import Clipper
+#from clipper_admin import Clipper
+
+DATA_TYPE_BYTES = 0
+DATA_TYPE_INTS = 1
+DATA_TYPE_FLOATS = 2
+DATA_TYPE_DOUBLES = 3
+DATA_TYPE_STRINGS = 4
+
 logging.basicConfig(format='%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
     datefmt='%y-%m-%d:%H:%M:%S',
     level=logging.INFO)
@@ -21,7 +28,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d
 logger = logging.getLogger(__name__)
 
 input_type = "floats"
-app_name = "a1"
+app_name = "app1"
 model_name = "m1"
 
 
@@ -82,12 +89,13 @@ def run():
   stub = clipper_frontend_pb2_grpc.PredictStub(channel)
   while True:
     for _ in range(100):
-      x = clipper_frontend_pb2.FloatsInput(input=list(np.random.random(299*299*3)))
-      req = clipper_frontend_pb2.PredictRequest(application=app_name, input=x)
-      response = stub.PredictFloats(req)
-      # print(response)
+      x = clipper_frontend_pb2.FloatData(data=list(np.random.random(5)))
+      req = clipper_frontend_pb2.PredictRequest(application=app_name, data_type=DATA_TYPE_FLOATS, float_data=x)
+      response = stub.Predict(req)
+      print(response)
 
 
 if __name__ == '__main__':
   # setup_external()
-  run_rest()
+  #run_rest()
+  run()

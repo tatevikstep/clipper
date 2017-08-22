@@ -1,5 +1,6 @@
 #include <cassert>
 #include <iostream>
+#include <sstream>
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,9 +31,10 @@
 using clipper::Response;
 using clipper::FeedbackAck;
 using clipper::VersionedModelId;
-using clipper::InputType;
+using clipper::DataType;
 using clipper::Input;
 using clipper::Output;
+using clipper::OutputData;
 using clipper::Query;
 using clipper::Feedback;
 using clipper::FeedbackQuery;
@@ -54,6 +56,7 @@ const char* PREDICTION_RESPONSE_KEY_DEFAULT_EXPLANATION = "default_explanation";
 const char* PREDICTION_ERROR_RESPONSE_KEY_ERROR = "error";
 const char* PREDICTION_ERROR_RESPONSE_KEY_CAUSE = "cause";
 
+const std::string PREDICTION_ERROR_NAME_REQUEST = "Request error";
 const std::string PREDICTION_ERROR_NAME_JSON = "Json error";
 const std::string PREDICTION_ERROR_NAME_QUERY_PROCESSING =
     "Query processing error";
@@ -222,7 +225,7 @@ class RequestHandler {
                                         "New application detected: {}", key);
             auto app_info =
                 clipper::redis::get_application_by_key(redis_connection_, key);
-            InputType input_type =
+            DataType input_type =
                 clipper::parse_input_type(app_info["input_type"]);
             std::string policy = app_info["policy"];
             std::string default_output = app_info["default_output"];
@@ -285,7 +288,7 @@ class RequestHandler {
           clipper::redis::get_linked_models(redis_connection_, app_name);
       set_linked_models_for_app(app_name, linked_model_names);
 
-      InputType input_type = clipper::parse_input_type(app_info["input_type"]);
+      DataType input_type = clipper::parse_input_type(app_info["input_type"]);
       std::string policy = app_info["policy"];
       std::string default_output = app_info["default_output"];
       int latency_slo_micros = std::stoi(app_info["latency_slo_micros"]);
@@ -341,7 +344,7 @@ class RequestHandler {
     return linked_models_for_apps_[name];
   }
 
-  void add_application(std::string name, InputType input_type,
+  void add_application(std::string name, DataType input_type,
                        std::string policy, std::string default_output,
                        long latency_slo_micros) {
     // TODO: QueryProcessor should handle this. We need to decide how the
@@ -351,12 +354,14 @@ class RequestHandler {
     // Initialize selection state for this application
     if (policy == clipper::DefaultOutputSelectionPolicy::get_name()) {
       clipper::DefaultOutputSelectionPolicy p;
-      std::shared_ptr<char> default_output_char_ptr(
-          static_cast<char *>(malloc(default_output.size()*sizeof(char))),
-          free);
-      memcpy(default_output_char_ptr.get(), default_output.c_str(), default_output.size()*sizeof(char));
-      clipper::rpc::PredictionOutput default_output_obj(default_output_char_ptr, 0, default_output.size());
-      clipper::Output parsed_default_output(default_output_obj, {});
+      std::shared_ptr<char> default_output_content(
+          static_cast<char*>(malloc(sizeof(default_output))), free);
+      memcpy(default_output_content.get(), default_output.data(),
+             default_output.size());
+      clipper::Output parsed_default_output(
+          std::make_shared<clipper::StringOutput>(default_output_content, 0,
+                                                  default_output.size()),
+          {});
       auto init_state = p.init_state(parsed_default_output);
       clipper::StateKey state_key{name, clipper::DEFAULT_USER_ID, 0};
       query_processor_.get_state_table()->put(state_key,
@@ -365,7 +370,7 @@ class RequestHandler {
 
     AppMetrics app_metrics(name);
 
-    auto predict_fn = [this, name, input_type, policy, latency_slo_micros,
+    auto predict_fn = [this, name, application_input_type = input_type, policy, latency_slo_micros,
                        app_metrics](ServerRpcContext* rpc_context) {
       try {
         std::vector<std::string> models = get_linked_models_for_app(name);
@@ -382,21 +387,45 @@ class RequestHandler {
 
         // std::string app_name = request.application();
 
-        size_t data_size = rpc_context->req_.input().input_size()*sizeof(float);
-        std::shared_ptr<float> data(
-            static_cast<float *>(malloc(data_size)),
-            free);
+        DataType request_input_type = static_cast<DataType>(rpc_context->req_.data_type());
+        if(request_input_type != application_input_type) {
+          clipper::log_error_formatted(
+              LOGGING_TAG_RPC_FRONTEND,
+              "Received prediction request with inputs of type: {} for application expecting inputs of type: {}",
+              clipper::get_readable_input_type(request_input_type),
+              clipper::get_readable_input_type(application_input_type));
+          // TODO(czumar): Return bad request response
+          return;
+        }
 
-        memcpy(data.get(), rpc_context->req_.input().input().data(), data_size);
-
-        // std::vector<float> data;
-        // data.reserve(rpc_context->req_.input().input_size());
-        // for (auto& x : rpc_context->req_.input().input()) {
-        //   data.push_back(x);
-        // }
-
-        std::shared_ptr<Input> input =
-            std::make_shared<clipper::FloatVector>(data, rpc_context->req_.input().input_size());
+        std::shared_ptr<clipper::Input> input;
+        switch(request_input_type) {
+          case DataType::Bytes:
+            // TODO(czumar): Figure this out!
+            break;
+          case DataType::Ints:
+            input = std::make_shared<clipper::IntVector>(
+                rpc_context->req_.int_data().data().data(), rpc_context->req_.int_data().data().size());
+            break;
+          case DataType::Floats:
+            input = std::make_shared<clipper::FloatVector>(
+                rpc_context->req_.float_data().data().data(), rpc_context->req_.float_data().data().size());
+            break;
+          case DataType::Doubles:
+            input = std::make_shared<clipper::DoubleVector>(
+                rpc_context->req_.double_data().data().data(), rpc_context->req_.double_data().data().size());
+            break;
+          case DataType::Strings:
+            input = std::make_shared<clipper::SerializableString>(
+                rpc_context->req_.string_data().data().data(), rpc_context->req_.string_data().data().size());
+            break;
+          case DataType::Invalid:
+          default: {
+            std::stringstream ss;
+            ss << "Attempted to create an input with invalid type: " << get_readable_input_type(request_input_type);
+            throw std::runtime_error(ss.str());
+          } break;
+        }
 
         long uid = 0;
         folly::Future<clipper::Response> prediction =
@@ -415,19 +444,45 @@ class RequestHandler {
           app_metrics.num_predictions_->increment(1);
           app_metrics.throughput_->mark(1);
 
-          // std::string content = get_prediction_response_content(r);
-          // rpc_context->response_.set_output(content);
+          PredictResponse &response = rpc_context->response_;
+          response.set_has_error(false);
+          std::shared_ptr<OutputData> output_data = r.output_.y_hat_;
+          response.set_data_type(static_cast<int>(output_data->type()));
 
-          if (r.output_is_default_) {
-            std::string content = get_prediction_response_content(r);
-            rpc_context->response_.set_output(content);
-          } else {
-            std::shared_ptr<char> ptr;
-            size_t start;
-            size_t end;
-            std::tie(ptr, start, end) = r.output_.y_hat_;
-            rpc_context->response_.set_output(ptr.get() + start, end - start);
+          switch(output_data->type()) {
+            case DataType::Bytes:
+              // TODO(czumar): Figure this out!
+              break;
+            case DataType::Ints: {
+              response.mutable_int_data()->mutable_data()->Resize(output_data->byte_size(), 0);
+              output_data->serialize(response.mutable_int_data()->mutable_data()->mutable_data());
+            } break;
+            case DataType::Floats: {
+              response.mutable_float_data()->mutable_data()->Resize(output_data->size(), 0);
+              output_data->serialize(response.mutable_float_data()->mutable_data()->mutable_data());
+            } break;
+            case DataType::Strings: {
+              // TODO(czumar): The abstractions for clipper::OutputData are insufficient here
+              std::shared_ptr<clipper::StringOutput> string_data =
+                  std::dynamic_pointer_cast<clipper::StringOutput>(output_data);
+              StringData output_string_data;
+              output_string_data.set_data(
+                  string_data->get_data().get() + string_data->get_start(), string_data->size());
+              response.mutable_string_data()->set_data(
+                  string_data->get_data().get() + string_data->get_start(), string_data->size());
+            } break;
+            case DataType::Invalid:
+            default: {
+              std::stringstream ss;
+              ss << "Received a prediction response with an invalid output type: "
+                 << get_readable_input_type(output_data->type());
+              throw std::runtime_error(ss.str());
+            } break;
           }
+
+          response.set_default_explanation(r.default_explanation_.get_value_or(""));
+          response.set_is_default(r.output_is_default_);
+
           rpc_context->send_response();
 
           })
@@ -435,7 +490,8 @@ class RequestHandler {
             clipper::log_error_formatted(clipper::LOGGING_TAG_CLIPPER,
                 "Unexpected error: {}", e.what());
             // TODO: Use grpc status
-            rpc_context->response_.set_output("An unexpected error occurred!");
+            rpc_context->response_.set_has_error(true);
+            rpc_context->response_.set_error("An unexpected error occurred!");
             rpc_context->send_response();
             return;
         });
@@ -443,15 +499,16 @@ class RequestHandler {
         // This invalid argument exception is most likely the propagation of an
         // exception thrown
         // when Rapidjson attempts to parse an invalid json schema
-        std::string json_error_response = get_prediction_error_response_content(
+        std::string error_response = get_prediction_error_response_content(
             PREDICTION_ERROR_NAME_JSON, e.what());
-        rpc_context->response_.set_output(json_error_response);
+        rpc_context->response_.set_has_error(true);
+        rpc_context->response_.set_error(error_response);
         rpc_context->send_response();
       } catch (const clipper::PredictError& e) {
-        std::string error_msg = e.what();
-        std::string json_error_response = get_prediction_error_response_content(
-            PREDICTION_ERROR_NAME_QUERY_PROCESSING, error_msg);
-        rpc_context->response_.set_output(json_error_response);
+        std::string error_response = get_prediction_error_response_content(
+            PREDICTION_ERROR_NAME_QUERY_PROCESSING, e.what());
+        rpc_context->response_.set_has_error(true);
+        rpc_context->response_.set_error(error_response);
         rpc_context->send_response();
       }
     };
@@ -468,85 +525,23 @@ class RequestHandler {
       search->second(rpc_context);
     } else {
       l.unlock();
-      std::string json_error_response = get_prediction_error_response_content(
-          "Request Error", "No registered application with name: " + app_name);
-      rpc_context->response_.set_output(json_error_response);
+      std::string error_response = get_prediction_error_response_content(
+          PREDICTION_ERROR_NAME_REQUEST, "No registered application with name: " + app_name);
+      rpc_context->response_.set_has_error(true);
+      rpc_context->response_.set_error(error_response);
       rpc_context->send_response();
     }
   }
 
   /**
-   * Obtains the json-formatted http response content for a successful query
-   *
-   * JSON format for prediction response:
-   * {
-   *    "query_id" := int,
-   *    "output" := float,
-   *    "default" := boolean
-   *    "default_explanation" := string (optional)
-   * }
-   */
-  static const std::string get_prediction_response_content(
-      Response& query_response) {
-    rapidjson::Document json_response;
-    json_response.SetObject();
-    clipper::json::add_long(json_response, PREDICTION_RESPONSE_KEY_QUERY_ID,
-                            query_response.query_id_);
-    try {
-      // Attempt to parse the string output as JSON
-      // and, if possible, nest it in object form within the
-      // query response
-      rapidjson::Document json_y_hat;
-      std::shared_ptr<char> ptr;
-      size_t start;
-      size_t end;
-      std::tie(ptr, start, end) = query_response.output_.y_hat_;
-      std::string y_hat_str = std::string(ptr.get() + start, end - start);
-      clipper::json::parse_json(y_hat_str, json_y_hat);
-      clipper::json::add_object(json_response, PREDICTION_RESPONSE_KEY_OUTPUT,
-                                json_y_hat);
-    } catch (const clipper::json::json_parse_error& e) {
-      // If the string output is not JSON-formatted, include
-      // it as a JSON-safe string value in the query response
-      std::shared_ptr<char> ptr;
-      size_t start;
-      size_t end;
-      std::tie(ptr, start, end) = query_response.output_.y_hat_;
-      std::string y_hat_str = std::string(ptr.get() + start, end - start);
-      clipper::json::add_string(json_response, PREDICTION_RESPONSE_KEY_OUTPUT,
-                                y_hat_str);
-    }
-    clipper::json::add_bool(json_response, PREDICTION_RESPONSE_KEY_USED_DEFAULT,
-                            query_response.output_is_default_);
-    if (query_response.output_is_default_ &&
-        query_response.default_explanation_) {
-      clipper::json::add_string(json_response,
-                                PREDICTION_RESPONSE_KEY_DEFAULT_EXPLANATION,
-                                query_response.default_explanation_.get());
-    }
-    std::string content = clipper::json::to_json_string(json_response);
-    return content;
-  }
-
-  /**
-   * Obtains the json-formatted http response content for a query
+   * Obtains user-readable http response content for a query
    * that could not be completed due to an error
-   *
-   * JSON format for error prediction response:
-   * {
-   *    "error" := string,
-   *    "cause" := string
-   * }
    */
   static const std::string get_prediction_error_response_content(
       const std::string error_name, const std::string error_msg) {
-    rapidjson::Document error_response;
-    error_response.SetObject();
-    clipper::json::add_string(error_response,
-                              PREDICTION_ERROR_RESPONSE_KEY_ERROR, error_name);
-    clipper::json::add_string(error_response,
-                              PREDICTION_ERROR_RESPONSE_KEY_CAUSE, error_msg);
-    return clipper::json::to_json_string(error_response);
+    std::stringstream ss;
+    ss << error_name << ": " << error_msg;
+    return ss.str();
   }
 
   /**
@@ -603,7 +598,7 @@ class ServerImpl {
             grpc::ServerContext* ctx, PredictRequest* request,
             grpc::ServerAsyncResponseWriter<PredictResponse>* responder,
             void* tag) {
-          service_.RequestPredictFloats(ctx, request, responder,
+          service_.RequestPredict(ctx, request, responder,
                                         srv_cqs_[j].get(), srv_cqs_[j].get(),
                                         tag);
         };
