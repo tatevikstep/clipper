@@ -101,7 +101,20 @@ bool Output::operator!=(const Output &rhs) const {
 ByteVector::ByteVector(std::shared_ptr<uint8_t> data, size_t size)
     : data_(data), size_(size) {}
 
+ByteVector::ByteVector(const uint8_t* data, size_t size) : ByteVector(size) {
+  set_data(data, size);
+}
+
+ByteVector::ByteVector(size_t size)
+    : data_(std::shared_ptr<uint8_t>(static_cast<uint8_t*>(malloc(size)), free)), size_(size) {
+
+}
+
 DataType ByteVector::type() const { return DataType::Bytes; }
+
+void ByteVector::set_data(const void *buf, size_t size) {
+  memcpy(data_.get(), buf, size);
+}
 
 size_t ByteVector::serialize(uint8_t *buf) const {
   return serialize_to_buffer(data_, size_, buf);
@@ -117,6 +130,19 @@ const std::shared_ptr<uint8_t> &ByteVector::get_data() const { return data_; }
 
 IntVector::IntVector(std::shared_ptr<int> data, size_t size)
     : data_(data), size_(size) {}
+
+IntVector::IntVector(const int *data, size_t size) : IntVector(size) {
+  set_data(data, size);
+}
+
+IntVector::IntVector(size_t size)
+    : data_(std::shared_ptr<int>(static_cast<int*>(malloc(size * sizeof(int))), free)), size_(size) {
+
+}
+
+void IntVector::set_data(const void *buf, size_t size) {
+  memcpy(data_.get(), buf, size * sizeof(int));
+}
 
 DataType IntVector::type() const { return DataType::Ints; }
 
@@ -134,6 +160,19 @@ const std::shared_ptr<int> &IntVector::get_data() const { return data_; }
 
 FloatVector::FloatVector(std::shared_ptr<float> data, size_t size)
     : data_(data), size_(size) {}
+
+FloatVector::FloatVector(const float *data, size_t size) : FloatVector(size) {
+  set_data(data, size);
+}
+
+FloatVector::FloatVector(size_t size)
+    : data_(std::shared_ptr<float>(static_cast<float*>(malloc(size * sizeof(float))), free)), size_(size) {
+
+}
+
+void FloatVector::set_data(const void *buf, size_t size) {
+  memcpy(data_.get(), buf, size * sizeof(float));
+}
 
 size_t FloatVector::serialize(uint8_t *buf) const {
   return serialize_to_buffer(data_, size_, buf);
@@ -157,7 +196,20 @@ const std::shared_ptr<float> &FloatVector::get_data() const { return data_; }
 DoubleVector::DoubleVector(std::shared_ptr<double> data, size_t size)
     : data_(data), size_(size) {}
 
+DoubleVector::DoubleVector(const double *data, size_t size) : DoubleVector(size) {
+  set_data(data, size);
+}
+
+DoubleVector::DoubleVector(size_t size)
+    : data_(std::shared_ptr<double>(static_cast<double*>(malloc(size * sizeof(double))), free)), size_(size) {
+
+}
+
 DataType DoubleVector::type() const { return DataType::Doubles; }
+
+void DoubleVector::set_data(const void *buf, size_t size) {
+  memcpy(data_.get(), buf, size * sizeof(double));
+}
 
 size_t DoubleVector::serialize(uint8_t *buf) const {
   return serialize_to_buffer(data_, size_, buf);
@@ -179,7 +231,20 @@ const std::shared_ptr<double> &DoubleVector::get_data() const { return data_; }
 SerializableString::SerializableString(std::shared_ptr<char> data, size_t size)
     : data_(data), size_(size) {}
 
+SerializableString::SerializableString(const char *data, size_t size) : SerializableString(size) {
+  set_data(data, size);
+}
+
+SerializableString::SerializableString(size_t size)
+    : data_(std::shared_ptr<char>(static_cast<char*>(malloc(size * sizeof(char))), free)), size_(size) {
+
+}
+
 DataType SerializableString::type() const { return DataType::Strings; }
+
+void SerializableString::set_data(const void *buf, size_t size) {
+  memcpy(data_.get(), buf, size * sizeof(char));
+}
 
 size_t SerializableString::serialize(uint8_t *buf) const {
   size_t amt_written = serialize_to_buffer(data_, size_, buf);
@@ -196,6 +261,10 @@ size_t SerializableString::size() const { return 1; }
 size_t SerializableString::byte_size() const {
   // The length of the string with an extra byte for the null terminator
   return size_ + 1;
+}
+
+const std::shared_ptr<char> &SerializableString::get_data() const {
+  return data_;
 }
 
 std::shared_ptr<OutputData> OutputData::create_output(
@@ -245,6 +314,10 @@ size_t ByteVectorOutput::serialize(void *buf) const {
   return end_ - start_;
 }
 
+const void* ByteVectorOutput::get_data() const {
+  return data_.get() + start_;
+}
+
 IntVectorOutput::IntVectorOutput(std::shared_ptr<int> data, size_t start,
                                  size_t end)
     : data_(data), start_(start), end_(end) {}
@@ -264,6 +337,10 @@ DataType IntVectorOutput::type() const { return DataType::Ints; }
 size_t IntVectorOutput::serialize(void *buf) const {
   memcpy(buf, data_.get() + start_, (end_ - start_) * sizeof(int));
   return end_ - start_;
+}
+
+const void* IntVectorOutput::get_data() const {
+  return data_.get() + start_;
 }
 
 FloatVectorOutput::FloatVectorOutput(std::shared_ptr<float> data, size_t start,
@@ -287,6 +364,10 @@ size_t FloatVectorOutput::serialize(void *buf) const {
   return end_ - start_;
 }
 
+const void* FloatVectorOutput::get_data() const {
+  return data_.get() + start_;
+}
+
 StringOutput::StringOutput(std::shared_ptr<char> data, size_t start, size_t end)
     : data_(data), start_(start), end_(end) {}
 
@@ -307,8 +388,8 @@ size_t StringOutput::serialize(void *buf) const {
   return end_ - start_;
 }
 
-const std::shared_ptr<char> &SerializableString::get_data() const {
-  return data_;
+const void* StringOutput::get_data() const {
+  return data_.get() + start_;
 }
 
 rpc::PredictionRequest::PredictionRequest(DataType input_type)

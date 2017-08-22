@@ -65,6 +65,16 @@ class Input {
   virtual DataType type() const = 0;
 
   /**
+   * Sets the content of the input to the content
+   * of the provided data buffer. This does
+   * not take ownership of the provided buffer.
+   *
+   * @param buf Buffer containing input data
+   * @param size The size, in elements, of the data buffer
+   */
+  virtual void set_data(const void* buf, size_t size) = 0;
+
+  /**
    * Serializes input and writes resulting data to provided buffer.
    *
    * The serialization methods are used for RPC.
@@ -86,6 +96,8 @@ class Input {
 class ByteVector : public Input {
  public:
   explicit ByteVector(std::shared_ptr<uint8_t> data, size_t size);
+  explicit ByteVector(const uint8_t* data, size_t size);
+  explicit ByteVector(size_t size);
 
   // Disallow copy
   ByteVector(ByteVector &other) = delete;
@@ -96,11 +108,11 @@ class ByteVector : public Input {
   ByteVector &operator=(ByteVector &&other) = default;
 
   DataType type() const override;
+  void set_data(const void* buf, size_t size) override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
-
   const std::shared_ptr<uint8_t> &get_data() const;
 
  private:
@@ -111,6 +123,8 @@ class ByteVector : public Input {
 class IntVector : public Input {
  public:
   explicit IntVector(std::shared_ptr<int> data, size_t size);
+  explicit IntVector(const int* data, size_t size);
+  explicit IntVector(size_t size);
 
   // Disallow copy
   IntVector(IntVector &other) = delete;
@@ -121,6 +135,7 @@ class IntVector : public Input {
   IntVector &operator=(IntVector &&other) = default;
 
   DataType type() const override;
+  void set_data(const void* buf, size_t size) override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -136,6 +151,8 @@ class IntVector : public Input {
 class FloatVector : public Input {
  public:
   explicit FloatVector(std::shared_ptr<float> data, size_t size);
+  explicit FloatVector(const float* data, size_t size);
+  explicit FloatVector(size_t size);
 
   // Disallow copy
   FloatVector(FloatVector &other) = delete;
@@ -146,6 +163,7 @@ class FloatVector : public Input {
   FloatVector &operator=(FloatVector &&other) = default;
 
   DataType type() const override;
+  void set_data(const void* buf, size_t size) override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -161,6 +179,8 @@ class FloatVector : public Input {
 class DoubleVector : public Input {
  public:
   explicit DoubleVector(std::shared_ptr<double> data, size_t size);
+  explicit DoubleVector(const double* data, size_t size);
+  explicit DoubleVector(size_t size);
 
   // Disallow copy
   DoubleVector(DoubleVector &other) = delete;
@@ -171,6 +191,7 @@ class DoubleVector : public Input {
   DoubleVector &operator=(DoubleVector &&other) = default;
 
   DataType type() const override;
+  void set_data(const void* buf, size_t size) override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -186,6 +207,8 @@ class DoubleVector : public Input {
 class SerializableString : public Input {
  public:
   explicit SerializableString(std::shared_ptr<char> data, size_t size);
+  explicit SerializableString(const char* data, size_t size);
+  explicit SerializableString(size_t size);
 
   // Disallow copy
   SerializableString(SerializableString &other) = delete;
@@ -196,6 +219,7 @@ class SerializableString : public Input {
   SerializableString &operator=(SerializableString &&other) = default;
 
   DataType type() const override;
+  void set_data(const void* buf, size_t size) override;
   size_t serialize(uint8_t *buf) const override;
   size_t hash() const override;
   size_t size() const override;
@@ -343,6 +367,8 @@ class OutputData {
    */
   virtual size_t byte_size() const = 0;
 
+  virtual const void* get_data() const = 0;
+
   static std::shared_ptr<OutputData> create_output(DataType type,
                                                    std::shared_ptr<void> data,
                                                    size_t start, size_t end);
@@ -366,6 +392,7 @@ class FloatVectorOutput : public OutputData {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
+  const void* get_data() const override;
 
  private:
   const std::shared_ptr<float> data_;
@@ -390,6 +417,7 @@ class IntVectorOutput : public OutputData {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
+  const void* get_data() const override;
 
  private:
   const std::shared_ptr<int> data_;
@@ -415,6 +443,7 @@ class ByteVectorOutput : public OutputData {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
+  const void* get_data() const override;
 
  private:
   const std::shared_ptr<uint8_t> data_;
@@ -439,6 +468,7 @@ class StringOutput : public OutputData {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
+  const void* get_data() const override;
 
  private:
   const std::shared_ptr<char> data_;
