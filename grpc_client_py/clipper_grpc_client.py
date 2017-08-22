@@ -28,7 +28,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d
 logger = logging.getLogger(__name__)
 
 input_type = "floats"
-app_name = "app1"
+app_name = "a1"
 model_name = "m1"
 
 
@@ -89,7 +89,7 @@ def run():
   stub = clipper_frontend_pb2_grpc.PredictStub(channel)
   while True:
     for _ in range(100):
-      x = clipper_frontend_pb2.FloatData(data=list(np.random.random(5)))
+      x = clipper_frontend_pb2.FloatData(data=list(np.random.random(299*299*3)))
       req = clipper_frontend_pb2.PredictRequest(application=app_name, data_type=DATA_TYPE_FLOATS, float_data=x)
       response = stub.Predict(req)
       print(response)
