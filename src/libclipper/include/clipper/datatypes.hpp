@@ -367,6 +367,8 @@ class OutputData {
    */
   virtual size_t byte_size() const = 0;
 
+  virtual const void* get_data() const = 0;
+
   static std::shared_ptr<OutputData> create_output(DataType type,
                                                    std::shared_ptr<void> data,
                                                    size_t start, size_t end);
@@ -390,6 +392,7 @@ class FloatVectorOutput : public OutputData {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
+  const void* get_data() const override;
 
  private:
   const std::shared_ptr<float> data_;
@@ -414,6 +417,7 @@ class IntVectorOutput : public OutputData {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
+  const void* get_data() const override;
 
  private:
   const std::shared_ptr<int> data_;
@@ -439,6 +443,7 @@ class ByteVectorOutput : public OutputData {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
+  const void* get_data() const override;
 
  private:
   const std::shared_ptr<uint8_t> data_;
@@ -463,10 +468,7 @@ class StringOutput : public OutputData {
   size_t hash() const override;
   size_t size() const override;
   size_t byte_size() const override;
-
-  const std::shared_ptr<char>& get_data() const;
-  size_t get_start() const;
-  size_t get_end() const;
+  const void* get_data() const override;
 
  private:
   const std::shared_ptr<char> data_;

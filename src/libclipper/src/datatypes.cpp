@@ -263,6 +263,10 @@ size_t SerializableString::byte_size() const {
   return size_ + 1;
 }
 
+const std::shared_ptr<char> &SerializableString::get_data() const {
+  return data_;
+}
+
 std::shared_ptr<OutputData> OutputData::create_output(
     DataType type, std::shared_ptr<void> data, size_t start, size_t end) {
   switch (type) {
@@ -310,6 +314,10 @@ size_t ByteVectorOutput::serialize(void *buf) const {
   return end_ - start_;
 }
 
+const void* ByteVectorOutput::get_data() const {
+  return data_.get() + start_;
+}
+
 IntVectorOutput::IntVectorOutput(std::shared_ptr<int> data, size_t start,
                                  size_t end)
     : data_(data), start_(start), end_(end) {}
@@ -329,6 +337,10 @@ DataType IntVectorOutput::type() const { return DataType::Ints; }
 size_t IntVectorOutput::serialize(void *buf) const {
   memcpy(buf, data_.get() + start_, (end_ - start_) * sizeof(int));
   return end_ - start_;
+}
+
+const void* IntVectorOutput::get_data() const {
+  return data_.get() + start_;
 }
 
 FloatVectorOutput::FloatVectorOutput(std::shared_ptr<float> data, size_t start,
@@ -352,6 +364,10 @@ size_t FloatVectorOutput::serialize(void *buf) const {
   return end_ - start_;
 }
 
+const void* FloatVectorOutput::get_data() const {
+  return data_.get() + start_;
+}
+
 StringOutput::StringOutput(std::shared_ptr<char> data, size_t start, size_t end)
     : data_(data), start_(start), end_(end) {}
 
@@ -372,20 +388,8 @@ size_t StringOutput::serialize(void *buf) const {
   return end_ - start_;
 }
 
-const std::shared_ptr<char>& StringOutput::get_data() const {
-  return data_;
-}
-
-size_t StringOutput::get_start() const {
-  return start_;
-}
-
-size_t StringOutput::get_end() const {
-  return end_;
-}
-
-const std::shared_ptr<char> &SerializableString::get_data() const {
-  return data_;
+const void* StringOutput::get_data() const {
+  return data_.get() + start_;
 }
 
 rpc::PredictionRequest::PredictionRequest(DataType input_type)

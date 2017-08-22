@@ -401,7 +401,9 @@ class RequestHandler {
         std::shared_ptr<clipper::Input> input;
         switch(request_input_type) {
           case DataType::Bytes:
-            // TODO(czumar): Figure this out!
+            input = std::make_shared<clipper::ByteVector>(
+                reinterpret_cast<const uint8_t*>(rpc_context->req_.byte_data().data().data()),
+                rpc_context->req_.byte_data().data().size());
             break;
           case DataType::Ints:
             input = std::make_shared<clipper::IntVector>(
@@ -451,7 +453,7 @@ class RequestHandler {
 
           switch(output_data->type()) {
             case DataType::Bytes:
-              // TODO(czumar): Figure this out!
+              response.mutable_byte_data()->set_data(output_data->get_data(), output_data->size());
               break;
             case DataType::Ints: {
               response.mutable_int_data()->mutable_data()->Resize(output_data->byte_size(), 0);
@@ -462,14 +464,8 @@ class RequestHandler {
               output_data->serialize(response.mutable_float_data()->mutable_data()->mutable_data());
             } break;
             case DataType::Strings: {
-              // TODO(czumar): The abstractions for clipper::OutputData are insufficient here
-              std::shared_ptr<clipper::StringOutput> string_data =
-                  std::dynamic_pointer_cast<clipper::StringOutput>(output_data);
-              StringData output_string_data;
-              output_string_data.set_data(
-                  string_data->get_data().get() + string_data->get_start(), string_data->size());
               response.mutable_string_data()->set_data(
-                  string_data->get_data().get() + string_data->get_start(), string_data->size());
+                  static_cast<const char*>(output_data->get_data()), output_data->size());
             } break;
             case DataType::Invalid:
             default: {
