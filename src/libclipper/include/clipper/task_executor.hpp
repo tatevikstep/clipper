@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include <boost/optional.hpp>
-#include <boost/thread.hpp>
+
 #include <redox.hpp>
 
 #include <folly/futures/Future.h>
@@ -70,13 +70,17 @@ class CacheEntry {
   CacheEntry &operator=(CacheEntry &&) = default;
 
   bool completed_ = false;
+  bool used_ = true;
   Output value_;
   std::vector<folly::Promise<Output>> value_promises_;
 };
 
+// A cache page is a pair of <hash, entry_size>
+using CachePage = std::pair<long, long>;
+
 class PredictionCache {
  public:
-  PredictionCache();
+  PredictionCache(size_t size_bytes);
   folly::Future<Output> fetch(const VersionedModelId &model,
                               const std::shared_ptr<Input> &input);
 
@@ -84,10 +88,17 @@ class PredictionCache {
            const Output &output);
 
  private:
-  std::mutex m_;
   size_t hash(const VersionedModelId &model, size_t input_hash) const;
+  void insert_entry(const long key, CacheEntry &value);
+  void evict_entries(long space_needed_bytes);
+
+  std::mutex m_;
+  const size_t max_size_bytes_;
+  size_t size_bytes_ = 0;
   // TODO cache needs a promise as well?
-  std::unordered_map<long, CacheEntry> cache_;
+  std::unordered_map<long, CacheEntry> entries_;
+  std::vector<long> page_buffer_;
+  size_t page_buffer_index_ = 0;
   std::shared_ptr<metrics::Counter> lookups_counter_;
   std::shared_ptr<metrics::RatioCounter> hit_ratio_;
 };
@@ -95,20 +106,27 @@ class PredictionCache {
 // NOTE: Prediction cache is now a query cache
 class QueryCache {
  public:
-  QueryCache();
+  QueryCache(size_t size_bytes);
   folly::Future<Output> fetch(const VersionedModelId &model,
                               const QueryId query_id);
 
   void put(const VersionedModelId &model, const QueryId query_id,
-           const Output &output);
+              Output output);
 
  private:
-  std::mutex m_;
   size_t hash(const VersionedModelId &model, const QueryId query_id) const;
+  void insert_entry(const long key, CacheEntry &value);
+  void evict_entries(long space_needed_bytes);
+
+  std::mutex m_;
+  const size_t max_size_bytes_;
+  size_t size_bytes_ = 0;
   // TODO cache needs a promise as well?
-  std::unordered_map<long, CacheEntry> cache_;
-  // std::shared_ptr<metrics::Counter> lookups_counter_;
-  // std::shared_ptr<metrics::RatioCounter> hit_ratio_;
+  std::unordered_map<long, CacheEntry> entries_;
+  std::vector<long> page_buffer_;
+  size_t page_buffer_index_ = 0;
+  std::shared_ptr<metrics::Counter> lookups_counter_;
+  std::shared_ptr<metrics::RatioCounter> hit_ratio_;
 };
 
 struct DeadlineCompare {
@@ -227,6 +245,7 @@ class TaskExecutor {
       : active_(std::make_shared<std::atomic_bool>(true)),
         active_containers_(std::make_shared<ActiveContainers>()),
         rpc_(std::make_unique<rpc::RPCService>()),
+        cache_(std::make_unique<QueryCache>(0)),
         model_queues_({}),
         model_metrics_({}) {
     log_info(LOGGING_TAG_TASK_EXECUTOR, "TaskExecutor started");
@@ -326,8 +345,8 @@ class TaskExecutor {
       boost::shared_lock<boost::shared_mutex> lock(model_queues_mutex_);
       auto model_queue_entry = model_queues_.find(t.model_);
       if (model_queue_entry != model_queues_.end()) {
-        output_futures.push_back(cache_.fetch(t.model_, t.query_id_));
-        // output_futures.push_back(cache_.fetch(t.model_, t.input_));
+        output_futures.push_back(cache_->fetch(t.model_, t.query_id_));
+        // output_futures.push_back(cache_->fetch(t.model_, t.input_));
         if (!output_futures.back().isReady()) {
           t.recv_time_ = std::chrono::system_clock::now();
           model_queue_entry->second->add_task(t);
@@ -372,8 +391,9 @@ class TaskExecutor {
   std::shared_ptr<std::atomic_bool> active_;
   std::shared_ptr<ActiveContainers> active_containers_;
   std::unique_ptr<rpc::RPCService> rpc_;
-  QueryCache cache_;
-  // PredictionCache cache_;
+  std::unique_ptr<QueryCache> cache_;
+  //QueryCache cache_;
+  //std::unique_ptr<PredictionCache> cache_;
   redox::Redox redis_connection_;
   redox::Subscriber redis_subscriber_;
   std::mutex inflight_messages_mutex_;
@@ -528,10 +548,10 @@ class TaskExecutor {
       (*cur_model_metric)
           .latency_->insert(static_cast<int64_t>(task_latency_micros));
     }
-    cache_.put(completed_msg.model_, completed_msg.query_id_,
+    cache_->put(completed_msg.model_, completed_msg.query_id_,
                Output{deserialized_output, {completed_msg.model_}});
-    // cache_.put(completed_msg.model_, completed_msg.input_,
-    //            Output{deserialized_output, {completed_msg.model_}});
+//    cache_->put(completed_msg.model_, completed_msg.input_,
+//                Output{deserialized_output, {completed_msg.model_}});>>>>>>> cache_eviction
   }
 };
 

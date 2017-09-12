@@ -6,9 +6,10 @@
 #include <tuple>
 #include <utility>
 
-#include <boost/thread.hpp>
+#include <folly/futures/Future.h>
 
 #include <folly/futures/Future.h>
+#include <wangle/concurrent/CPUThreadPoolExecutor.h>
 
 #include "datatypes.hpp"
 #include "metrics.hpp"
@@ -54,6 +55,7 @@ class QueryProcessor {
   // same instance for different applications or users.
   std::unordered_map<std::string, std::shared_ptr<SelectionPolicy>>
       selection_policies_;
+  std::shared_ptr<wangle::CPUThreadPoolExecutor> futures_executor_;
 };
 
 }  // namespace clipper
