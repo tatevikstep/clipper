@@ -1,5 +1,6 @@
 FROM frolvlad/alpine-gxx
 
+
 RUN echo "@testing http://nl.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 
 RUN apk add --update --no-cache curl git bash make boost-dev cmake libev-dev hiredis-dev zeromq-dev \
@@ -95,6 +96,12 @@ RUN set -eux; \
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+
+RUN git clone https://github.com/facebook/wangle.git \
+    && cd wangle/wangle \
+    && cmake . \
+    && make -j8 \
+    && make install
 
 
 # Prep Clipper
