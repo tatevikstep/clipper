@@ -6,7 +6,7 @@
 #include <cxxopts.hpp>
 
 int main(int argc, char* argv[]) {
-  cxxopts::Options options("grpc_frontend",
+  cxxopts::Options options("zmq_frontend",
                            "Clipper query processing frontend");
   // clang-format off
   options.add_options()
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
 
   using namespace std::chrono_literals;
   while (true) {
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(30s);
     server.get_metrics();
     std::cout << server.get_metrics() << std::endl;
   }

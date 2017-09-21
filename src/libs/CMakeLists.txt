@@ -71,6 +71,3 @@ export(TARGETS cqueue FILE ConcurrentQueueConfig.cmake)
 add_subdirectory(redox)
 
 add_subdirectory(rapidjson)
-
-add_subdirectory(grpc)
-
