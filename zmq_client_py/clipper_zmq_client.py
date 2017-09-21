@@ -9,6 +9,7 @@ import sys
 from threading import Lock, Thread
 from Queue import Queue
 
+DATA_TYPE_INVALID = -1
 DATA_TYPE_BYTES = 0
 DATA_TYPE_INTS = 1
 DATA_TYPE_FLOATS = 2
@@ -133,11 +134,20 @@ class Client:
 
 		while not self.request_queue.empty():
 			request_id, app_name, input_item = self.request_queue.get()
+			input_type = type(input_item)
+			if input_type == np.ndarray:
+				input_type = input_item.dtype
+			clipper_input_type = self._dtype_to_clipper_type(input_type)
+			if clipper_input_type == DATA_TYPE_INVALID:
+				print("Encountered input with invalid type \
+					corresponding to python data type: {}".format(input_type))
+				continue
+
 			socket.send("", zmq.SNDMORE)
 			socket.send(struct.pack("<I", self.client_id), zmq.SNDMORE)
 			socket.send(struct.pack("<I", request_id), zmq.SNDMORE)
 			socket.send_string(app_name, zmq.SNDMORE)
-			socket.send(struct.pack("<I", DATA_TYPE_DOUBLES), zmq.SNDMORE)
+			socket.send(struct.pack("<I", clipper_input_type), zmq.SNDMORE)
 			socket.send(struct.pack("<I", len(input_item)), zmq.SNDMORE)
 			socket.send(input_item)
 
@@ -151,4 +161,18 @@ class Client:
 		elif cl_type == DATA_TYPE_DOUBLES:
 			return np.float64
 		elif cl_type == DATA_TYPE_STRINGS:
-			return np.str_
+			return str
+
+	def _dtype_to_clipper_type(self, dtype):
+		if dtype == np.int8:
+			return DATA_TYPE_BYTES
+		elif dtype == np.int32:
+			return DATA_TYPE_INTS
+		elif dtype == np.float32:
+			return DATA_TYPE_FLOATS
+		elif dtype == np.float64:
+			return DATA_TYPE_DOUBLES
+		elif dtype in [str, np.str_]:
+			return DATA_TYPE_STRINGS
+		else:
+			return DATA_TYPE_INVALID
