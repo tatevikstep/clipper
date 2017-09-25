@@ -52,7 +52,7 @@ class ContainerManager(object):
         return
 
     @abc.abstractmethod
-    def deploy_model(self, name, version, input_type, image):
+    def deploy_model(self, name, version, input_type, image, **kwargs):
         return
 
     @abc.abstractmethod
@@ -60,7 +60,7 @@ class ContainerManager(object):
         return
 
     @abc.abstractmethod
-    def set_num_replicas(self, name, version, input_type, image, num_replicas):
+    def set_num_replicas(self, name, version, input_type, image, num_replicas, **kwargs):
         return
 
     @abc.abstractmethod

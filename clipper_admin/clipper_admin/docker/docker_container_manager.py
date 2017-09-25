@@ -10,6 +10,7 @@ from ..container_manager import (
     CLIPPER_MGMT_FRONTEND_CONTAINER_LABEL, CLIPPER_INTERNAL_RPC_PORT,
     CLIPPER_INTERNAL_MANAGEMENT_PORT)
 from ..exceptions import ClipperException
+import subprocess32 as subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +145,7 @@ class DockerContainerManager(ContainerManager):
         # No extra connection steps to take on connection
         return
 
-    def deploy_model(self, name, version, input_type, image, num_replicas=1):
+    def deploy_model(self, name, version, input_type, image, num_replicas=1, **kwargs):
         # Parameters
         # ----------
         # image : str
@@ -152,7 +153,7 @@ class DockerContainerManager(ContainerManager):
         #     registry, the registry name must be prepended to the image. For example,
         #     "localhost:5000/my_model_name:my_model_version" or
         #     "quay.io/my_namespace/my_model_name:my_model_version"
-        self.set_num_replicas(name, version, input_type, image, num_replicas)
+        self.set_num_replicas(name, version, input_type, image, num_replicas, **kwargs)
 
     def _get_replicas(self, name, version):
         containers = self.docker_client.containers.list(
@@ -167,7 +168,7 @@ class DockerContainerManager(ContainerManager):
     def get_num_replicas(self, name, version):
         return len(self._get_replicas(name, version))
 
-    def _add_replica(self, name, version, input_type, image):
+    def _add_replica(self, name, version, input_type, image, gpu_num=None):
 
         containers = self.docker_client.containers.list(
             filters={"label": CLIPPER_QUERY_FRONTEND_CONTAINER_LABEL})
@@ -187,13 +188,30 @@ class DockerContainerManager(ContainerManager):
         labels = self.common_labels.copy()
         labels[CLIPPER_MODEL_CONTAINER_LABEL] = create_model_container_label(
             name, version)
-        self.docker_client.containers.run(
-            image,
-            environment=env_vars,
-            labels=labels,
-            **self.extra_container_kwargs)
+        if gpu_num is None:
+            self.docker_client.containers.run(
+                image,
+                environment=env_vars,
+                labels=labels,
+                **self.extra_container_kwargs)
+        else:
+            logger.info("Starting {name}:{version} on GPU {gpu_num}".format(
+                name=name, version=version, gpu_num=gpu_num))
+            env = os.environ.copy()
+            env["NV_GPU"] = str(gpu_num)
+            cmd = ["nvidia-docker", "run", "-d",
+                   "--network=%s" % self.docker_network]
+            for k, v in labels.iteritems():
+                cmd.append("-l")
+                cmd.append("%s=%s" % (k, v))
+            for k, v in env_vars.iteritems():
+                cmd.append("-e")
+                cmd.append("%s=%s" % (k, v))
+            cmd.append(image)
+            logger.info("Docker command: \"%s\"" % cmd)
+            subprocess.check_call(cmd, env=env)
 
-    def set_num_replicas(self, name, version, input_type, image, num_replicas):
+    def set_num_replicas(self, name, version, input_type, image, num_replicas, **kwargs):
         current_replicas = self._get_replicas(name, version)
         if len(current_replicas) < num_replicas:
             num_missing = num_replicas - len(current_replicas)
@@ -204,8 +222,12 @@ class DockerContainerManager(ContainerManager):
                     name=name,
                     version=version,
                     missing=(num_missing)))
+            if "gpus" in kwargs:
+                available_gpus = kwargs["gpus"]
             for _ in range(num_missing):
-                self._add_replica(name, version, input_type, image)
+                if len(available_gpus) > 0:
+                    gpu_num = available_gpus.pop()
+                self._add_replica(name, version, input_type, image, gpu_num=gpu_num)
         elif len(current_replicas) > num_replicas:
             num_extra = len(current_replicas) - num_replicas
             logger.info(

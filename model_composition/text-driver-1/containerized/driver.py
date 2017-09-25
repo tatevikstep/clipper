@@ -61,7 +61,7 @@ def run(proc_num):
         print(response)
     for r in reviews:
         client.send_request(app_name, r, req_callback)
-        time.sleep(0.01)
+        time.sleep(5)
 
 
 def setup_clipper():
@@ -69,14 +69,15 @@ def setup_clipper():
     cl.start_clipper(query_frontend_image="clipper/zmq_frontend:develop")
     time.sleep(10)
     cl.register_application(name=app_name,
-                            default_output="None",
+                            default_output="TIMEOUT",
                             slo_micros=1000000,
                             input_type="strings")
     cl.deploy_model(name=model_name,
                     version=1,
                     image="model-comp/theano-lstm",
                     input_type="strings",
-                    num_replicas=1)
+                    num_replicas=2,
+                    gpus=[0, 1])
     time.sleep(30)
     cl.link_model_to_app(app_name=app_name, model_name=model_name)
     logger.info("Clipper is set up")
@@ -90,7 +91,7 @@ if __name__ == "__main__":
 
     num_procs = int(sys.argv[1])
 
-    # setup_clipper()
+    setup_clipper()
 
     processes = []
 
