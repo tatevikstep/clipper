@@ -8,7 +8,7 @@ import time
 from clipper_admin import ClipperConnection, DockerContainerManager
 # from datetime import datetime
 from multiprocessing import Process
-from clipper_zmq_client import Client
+from zmq_client import Client
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
@@ -16,6 +16,7 @@ logging.basicConfig(
     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+
 
 DATA_TYPE_BYTES = 0
 DATA_TYPE_INTS = 1
@@ -31,7 +32,7 @@ model_name = "sentiment-analysis"
 
 
 def load_reviews():
-    base_path = "/home/ubuntu/clipper/model-comp-apps/text-driver-1/workload_data/aclImdb/test/"
+    base_path = "/home/ubuntu/clipper/model_composition/text-driver-1/workload_data/aclImdb/test/"
     reviews = []
     pos_path = os.path.join(base_path, "pos")
     for rev_file in os.listdir(pos_path):
@@ -52,13 +53,15 @@ def run(proc_num):
     Note: Throughput logging is performed by the ZMQ Frontend Client
     (clipper_zmq_client.py)
     """
-    client = Client("localhost", 1337)
+    client = Client("localhost", 4456, 4455)
     client.start()
     reviews = load_reviews()
     logger.info("Loaded {} reviews".format(len(reviews)))
+    def req_callback(response):
+        print(response)
     for r in reviews:
-        client.send_request(app_name, r)
-        time.sleep(10)
+        client.send_request(app_name, r, req_callback)
+        time.sleep(0.01)
 
 
 def setup_clipper():
@@ -87,7 +90,7 @@ if __name__ == "__main__":
 
     num_procs = int(sys.argv[1])
 
-    setup_clipper()
+    # setup_clipper()
 
     processes = []
 
