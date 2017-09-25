@@ -16,4 +16,5 @@ _build/
 # scala
 dependency-reduced-pom.xml
 *.iml
-model-comp-apps/text-driver-1/workload_data/
+model_composition/text-driver-1/workload_data/
+*.egg-info

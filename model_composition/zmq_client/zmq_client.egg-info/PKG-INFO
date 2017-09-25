@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: zmq-client
+Version: 1.0.0
+Summary: A ZMQ-based client for querying Clipper
+Home-page: http://clipper.ai
+Author: Corey Zumar
+Author-email: czumar@berkeley.edu
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN

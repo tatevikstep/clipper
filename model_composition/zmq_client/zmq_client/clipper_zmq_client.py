@@ -16,6 +16,11 @@ DATA_TYPE_FLOATS = 2
 DATA_TYPE_DOUBLES = 3
 DATA_TYPE_STRINGS = 4
 
+BYTES_PER_INT = 4
+BYTES_PER_FLOAT = 4
+BYTES_PER_BYTE = 1
+BYTES_PER_CHAR = 1
+
 class Client:
 
 	active = False
@@ -29,7 +34,7 @@ class Client:
 		clipper_send_port : int
 			The clipper port to which we will send requests
 		clipper_recv_port : int
-			The clipper port from which we will receive responses		
+			The clipper port from which we will receive responses
 		"""
 		self.clipper_host = clipper_host
 		self.send_port = clipper_send_port
@@ -148,8 +153,24 @@ class Client:
 			socket.send(struct.pack("<I", request_id), zmq.SNDMORE)
 			socket.send_string(app_name, zmq.SNDMORE)
 			socket.send(struct.pack("<I", clipper_input_type), zmq.SNDMORE)
-			socket.send(struct.pack("<I", len(input_item)), zmq.SNDMORE)
-			socket.send(input_item)
+            if clipper_input_type == DATA_TYPE_STRINGS:
+                num_inputs = 1
+                input_len = len(input_item)
+                input_buffer_size = BYTES_PER_INT + BYTES_PER_INT * num_inputs + input_len
+                input_buffer = bytearray(input_buffer_size)
+                memview = memoryview(input_buffer)
+                struct.pack_into("<I", input_buffer, 0, num_inputs)
+                content_end_position = BYTES_PER_INT + (BYTES_PER_INT * num_inputs)
+                current_input_sizes_position = BYTES_PER_INT
+                struct.pack_into("<I", input_buffer, current_input_sizes_position, input_len)
+                current_input_sizes_position += BYTES_PER_INT
+                memview[content_end_position: content_end_position + input_len] = input_item
+                content_end_position += input_len
+                socket.send(struct.pack("<I", content_end_position), zmq.SNDMORE)
+                socket.send(input_buffer[0:content_end_position])
+            else:
+                socket.send(struct.pack("<I", len(input_item)), zmq.SNDMORE)
+                socket.send(input_item)
 
 	def _clipper_type_to_dtype(self, cl_type):
 		if cl_type == DATA_TYPE_BYTES:

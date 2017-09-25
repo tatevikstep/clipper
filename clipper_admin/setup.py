@@ -30,7 +30,7 @@ setup(
         'subprocess32',
         'pyyaml',
         'docker',
-        'kubernetes',
+        # 'kubernetes',
         'six',
     ],
     extras_require={

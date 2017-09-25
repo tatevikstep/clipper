@@ -8,7 +8,7 @@ from ..container_manager import (
     ContainerManager, CLIPPER_DOCKER_LABEL, CLIPPER_MODEL_CONTAINER_LABEL,
     CLIPPER_QUERY_FRONTEND_CONTAINER_LABEL,
     CLIPPER_MGMT_FRONTEND_CONTAINER_LABEL, CLIPPER_INTERNAL_RPC_PORT,
-    CLIPPER_INTERNAL_QUERY_PORT, CLIPPER_INTERNAL_MANAGEMENT_PORT)
+    CLIPPER_INTERNAL_MANAGEMENT_PORT)
 from ..exceptions import ClipperException
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,8 @@ class DockerContainerManager(ContainerManager):
             The Redis port. If ``redis_ip`` is set to None, Clipper will start Redis on this port.
             If ``redis_ip`` is provided, Clipper will connect to Redis on this port.
         docker_network : str, optional
-            The docker network to attach the containers to. You can read more about Docker networking in the
+            The docker network to attach the containers to. You can read more about Docker
+            networking in the
             `Docker User Guide <https://docs.docker.com/engine/userguide/networking/>`_.
         extra_container_kwargs : dict
             Any additional keyword arguments to pass to the call to
@@ -131,8 +132,8 @@ class DockerContainerManager(ContainerManager):
             name="query_frontend-{}".format(
                 random.randint(0, 100000)),  # generate a random name
             ports={
-                '%s/tcp' % CLIPPER_INTERNAL_QUERY_PORT:
-                self.clipper_query_port,
+                '4455/tcp': 4455,
+                '4456/tcp': 4456,
                 '%s/tcp' % CLIPPER_INTERNAL_RPC_PORT: self.clipper_rpc_port
             },
             labels=query_labels,

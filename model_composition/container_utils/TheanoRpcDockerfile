@@ -11,7 +11,7 @@ RUN apt-get install -y libblas-dev liblapack-dev
 
 RUN apt-get install -y gfortran
 
-RUN pip install numpy scipy
+RUN pip install numpy scipy mako
 
 RUN pip install Theano
 
