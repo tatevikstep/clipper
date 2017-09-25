@@ -284,6 +284,8 @@ void RPCService::receive_message(
       }
     } break;
     case MessageType::ContainerContent: {
+
+      log_info(LOGGING_TAG_RPC, "receiving response from container");
       // This message is a response to a container query
       message_t msg_id;
       message_t msg_content_type;
@@ -301,6 +303,7 @@ void RPCService::receive_message(
       std::shared_ptr<void> msg_content_buffer(malloc(content_size), free);
 
       socket.recv(msg_content_buffer.get(), content_size, 0);
+      log_info(LOGGING_TAG_RPC, "response received");
       if (!new_connection) {
         int id = static_cast<int *>(msg_id.data())[0];
         RPCResponse response(id, content_data_type, msg_content_buffer);
