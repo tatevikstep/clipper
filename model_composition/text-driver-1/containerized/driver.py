@@ -9,6 +9,8 @@ from clipper_admin import ClipperConnection, DockerContainerManager
 # from datetime import datetime
 from multiprocessing import Process
 from zmq_client import Client
+from datetime import datetime
+import argparse
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
@@ -45,20 +47,82 @@ def load_reviews():
 
 
 def run(proc_num):
-    """
-    Note: Throughput logging is performed by the ZMQ Frontend Client
-    (clipper_zmq_client.py)
-    """
-    client = Client("localhost", 4456, 4455)
-    client.start()
+    predictor = Predictor()
     reviews = load_reviews()
     logger.info("Loaded {} reviews".format(len(reviews)))
 
-    def req_callback(response):
-        print("LSTM response: {}".format(response))
-    for r in reviews:
-        client.send_request("theano-lstm", r, req_callback)
+    for r in reviews[20:30]:
+        logger.info("sending prediction")
+        predictor.predict(r)
         time.sleep(5)
+
+
+class InflightReq(object):
+
+    def __init__(self):
+        self.raw_sentiment = False
+        # self.raw_sentiment = True
+        self.auto_compl_sentiment = False
+        self.start_time = datetime.now()
+
+    def raw_complete(self):
+        self.raw_sentiment = True
+        return self.check_complete()
+
+    def auto_compl_complete(self):
+        self.auto_compl_sentiment = True
+        return self.check_complete()
+
+    def check_complete(self):
+        if self.auto_compl_sentiment and self.raw_sentiment:
+            self.latency = (datetime.now() - self.start_time).total_seconds()
+            logger.info("Completed in {} seconds".format(self.latency))
+            return True
+        else:
+            return False
+
+
+class Predictor(object):
+
+    def __init__(self):
+        self.outstanding_reqs = {}
+        self.client = Client("localhost", 4456, 4455)
+        self.client.start()
+        self.latencies = []
+        self.num_complete = 0
+        self.cur_req_id = 0
+
+    def predict(self, review):
+        self.outstanding_reqs[self.cur_req_id] = InflightReq()
+        self.get_raw_sentiment(self.cur_req_id, review)
+        self.get_auto_compl_sentiment(self.cur_req_id, review)
+        self.cur_req_id += 1
+
+    def get_raw_sentiment(self, req_id, review):
+        def callback(response):
+            logger.info("received raw sentiment")
+            if self.outstanding_reqs[req_id].raw_complete():
+                self.latencies.append(self.outstanding_reqs[req_id].latency)
+                self.num_complete += 1
+                del self.outstanding_reqs[req_id]
+
+        logger.info("getting raw sentiment")
+        self.client.send_request("theano-lstm", review, callback)
+
+    def get_auto_compl_sentiment(self, req_id, review):
+        def sentiment_callback(response):
+            logger.info("received auto compl sentiment: {}".format(response))
+            if self.outstanding_reqs[req_id].auto_compl_complete():
+                self.latencies.append(self.outstanding_reqs[req_id].latency)
+                self.num_complete += 1
+                del self.outstanding_reqs[req_id]
+
+        def auto_compl_callback(response):
+            logger.info("received completion, requesting sentiment. Response: {}".format(response))
+            self.client.send_request("theano-lstm", response, sentiment_callback)
+
+        logger.info("requesting completion")
+        self.client.send_request("tf-autocomplete", review[:len(review)/2], auto_compl_callback)
 
 
 def setup_heavy_node(clipper_conn,
@@ -88,27 +152,26 @@ def setup_clipper():
     cl.start_clipper(query_frontend_image="clipper/zmq_frontend:develop")
     time.sleep(10)
     setup_heavy_node(cl, "theano-lstm", "strings", "model-comp/theano-lstm", gpus=[0])
-    setup_heavy_node(cl, "tf-autocomplete", "strings", "model-comp/tf-autocomplete", gpus=[1])
-    time.sleep(30)
+    setup_heavy_node(cl, "tf-autocomplete", "strings", "model-comp/tf-autocomplete", slo=10000000, gpus=[1])
+    time.sleep(10)
     logger.info("Clipper is set up")
-    time.sleep(15)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python zmq_benchmark.py <NUM_PROCS>")
-        sys.exit(1)
 
-    num_procs = int(sys.argv[1])
+    parser = argparse.ArgumentParser(description='Text-Driver-1')
+    parser.add_argument('--setup', action='store_true')
+    parser.add_argument('--run', action='store_true')
+    parser.add_argument('--num_procs', type=int, default=1)
+    args = parser.parse_args()
+    if args.setup:
+        setup_clipper()
+    if args.run:
+        processes = []
+        for i in range(args.num_procs):
+            p = Process(target=run, args=('%d'.format(i),))
+            p.start()
+            processes.append(p)
 
-    setup_clipper()
-
-    processes = []
-
-    for i in range(num_procs):
-        p = Process(target=run, args=('%d'.format(i),))
-        p.start()
-        processes.append(p)
-
-    for p in processes:
-        p.join()
+        for p in processes:
+            p.join()
