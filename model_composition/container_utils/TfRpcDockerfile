@@ -6,8 +6,4 @@ RUN mkdir -p /model \
     && apt-get install -y python-pip \
     && pip install pyzmq
 
-ENV CLIPPER_MODEL_PATH=/model.mod
-
-WORKDIR /container
-
-COPY __init__.py rpc.py /container/
+# vim: set filetype=dockerfile:

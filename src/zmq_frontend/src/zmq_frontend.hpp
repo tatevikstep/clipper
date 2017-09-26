@@ -328,6 +328,13 @@ class ServerImpl {
                 app_metrics.default_pred_ratio_->increment(1, 1);
               } else {
                 app_metrics.default_pred_ratio_->increment(0, 1);
+                if (r.output_.y_hat_->type() == clipper::DataType::Strings) {
+                  std::string debugstr = std::string(
+                      static_cast<const char *>(r.output_.y_hat_->get_data()),
+                      r.output_.y_hat_->byte_size());
+                  clipper::log_info_formatted(clipper::LOGGING_TAG_CLIPPER,
+                      "Responding with: {}", debugstr);
+                }
               }
               app_metrics.latency_->insert(r.duration_micros_);
               app_metrics.num_predictions_->increment(1);

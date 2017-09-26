@@ -327,9 +327,9 @@ class Server(threading.Thread):
 
                         response.send(socket, self.event_history)
 
-                        print("recv: %f us, parse: %f us, handle: %f us" %
+                        print("recv: %f us, parse: %f us, handle: %f seconds" %
                               ((t2 - t1).microseconds, (t3 - t2).microseconds,
-                               (t4 - t3).microseconds))
+                               (t4 - t3).total_seconds()))
                         sys.stdout.flush()
                         sys.stderr.flush()
 
@@ -363,9 +363,9 @@ class PredictionRequest:
     Parameters
     ----------
     msg_id : bytes
-        The raw message id associated with the RPC 
+        The raw message id associated with the RPC
         prediction request message
-    inputs : 
+    inputs :
         One of [[byte]], [[int]], [[float]], [[double]], [string]
     """
 

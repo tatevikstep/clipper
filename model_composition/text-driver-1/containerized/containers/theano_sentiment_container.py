@@ -6,7 +6,9 @@ import rpc
 import pickle
 import re
 import numpy as np
-import lstm_utils, imdb_utils
+import lstm_utils
+import imdb_utils
+
 
 class MovieSentimentContainer(rpc.ModelContainerBase):
 
@@ -28,8 +30,8 @@ class MovieSentimentContainer(rpc.ModelContainerBase):
         params = lstm_utils.init_params(model_options)
         params = lstm_utils.load_params(model_path, params)
         tparams = lstm_utils.init_tparams(params)
-
-        (use_noise, x, mask, y, f_pred_prob, f_pred, cost) = lstm_utils.build_model(tparams, model_options)
+        (use_noise, x, mask, y, f_pred_prob, f_pred, cost) = lstm_utils.build_model(tparams,
+                                                                                    model_options)
         self.predict_function = f_pred
 
         dict_file = open(imdb_pkl_dict_path, 'rb')
@@ -42,7 +44,7 @@ class MovieSentimentContainer(rpc.ModelContainerBase):
         x, mask, y = self._prepare_reviews_data(reviews_features)
         predictions = self.predict_function(x, mask)
         pred_strs = [str(pred) for pred in predictions]
-        print(pred_strs)
+        # print("Inputs: {}, Predictions: {}".format(inputs, pred_strs))
         return pred_strs
 
     def _get_reviews_features(self, reviews):
@@ -67,6 +69,7 @@ class MovieSentimentContainer(rpc.ModelContainerBase):
     def _prepare_reviews_data(self, reviews_features):
         x, mask, y = imdb_utils.prepare_data(reviews_features, [], maxlen=None)
         return x, mask, y
+
 
 if __name__ == "__main__":
     print("Starting Theano Sentiment Analysis Container")
