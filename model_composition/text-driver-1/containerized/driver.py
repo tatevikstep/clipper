@@ -26,10 +26,6 @@ DATA_TYPE_STRINGS = 4
 
 CIFAR_SIZE_DOUBLES = (299 * 299 * 3) / 2
 
-input_type = "strings"
-app_name = "text-driver-1"
-model_name = "sentiment-analysis"
-
 
 def load_reviews():
     base_path = "/home/ubuntu/clipper/model_composition/text-driver-1/workload_data/aclImdb/test/"
@@ -57,29 +53,43 @@ def run(proc_num):
     client.start()
     reviews = load_reviews()
     logger.info("Loaded {} reviews".format(len(reviews)))
+
     def req_callback(response):
-        print(response)
+        print("LSTM response: {}".format(response))
     for r in reviews:
-        client.send_request(app_name, r, req_callback)
+        client.send_request("theano-lstm", r, req_callback)
         time.sleep(5)
+
+
+def setup_heavy_node(clipper_conn,
+                     name,
+                     input_type,
+                     model_image,
+                     slo=1000000,
+                     num_replicas=1,
+                     gpus=None):
+    clipper_conn.register_application(name=name,
+                                      default_output="TIMEOUT",
+                                      slo_micros=slo,
+                                      input_type=input_type)
+
+    clipper_conn.deploy_model(name=name,
+                              version=1,
+                              image=model_image,
+                              input_type=input_type,
+                              num_replicas=num_replicas,
+                              gpus=gpus)
+
+    clipper_conn.link_model_to_app(app_name=name, model_name=name)
 
 
 def setup_clipper():
     cl = ClipperConnection(DockerContainerManager(redis_port=6380))
     cl.start_clipper(query_frontend_image="clipper/zmq_frontend:develop")
     time.sleep(10)
-    cl.register_application(name=app_name,
-                            default_output="TIMEOUT",
-                            slo_micros=1000000,
-                            input_type="strings")
-    cl.deploy_model(name=model_name,
-                    version=1,
-                    image="model-comp/theano-lstm",
-                    input_type="strings",
-                    num_replicas=2,
-                    gpus=[0, 1])
+    setup_heavy_node(cl, "theano-lstm", "strings", "model-comp/theano-lstm", gpus=[0])
+    setup_heavy_node(cl, "tf-autocomplete", "strings", "model-comp/tf-autocomplete", gpus=[1])
     time.sleep(30)
-    cl.link_model_to_app(app_name=app_name, model_name=model_name)
     logger.info("Clipper is set up")
     time.sleep(15)
 

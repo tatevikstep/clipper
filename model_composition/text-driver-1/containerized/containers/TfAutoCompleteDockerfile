@@ -1,0 +1,13 @@
+FROM model-comp/tf-rpc:latest
+
+ENV CLIPPER_MODEL_VOCAB_PATH=/model/lm1b_vocab.txt
+ENV CLIPPER_MODEL_GRAPH_PATH=/model/lm1b_graphdef.pbtxt
+ENV CLIPPER_MODEL_CHECKPOINT_PATH=/model/lm1b_ckpts/ckpt-*
+
+
+COPY lm1b_model_data/ /model/
+COPY tf_autocompletion_container.py lm1b_data_utils.py rpc.py __init__.py /container/
+
+CMD ["python", "/container/tf_autocompletion_container.py"]
+
+# vim: set filetype=dockerfile:
