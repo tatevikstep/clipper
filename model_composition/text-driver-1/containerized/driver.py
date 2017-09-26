@@ -1,6 +1,5 @@
 from __future__ import print_function
-
-import sys
+# import sys
 import os
 import logging
 import numpy as np
@@ -51,17 +50,16 @@ def run(proc_num):
     reviews = load_reviews()
     logger.info("Loaded {} reviews".format(len(reviews)))
 
-    for r in reviews[20:30]:
+    for r in reviews[:100]:
         logger.info("sending prediction")
         predictor.predict(r)
-        time.sleep(5)
+        time.sleep(10)
 
 
 class InflightReq(object):
 
     def __init__(self):
         self.raw_sentiment = False
-        # self.raw_sentiment = True
         self.auto_compl_sentiment = False
         self.start_time = datetime.now()
 
@@ -100,28 +98,26 @@ class Predictor(object):
 
     def get_raw_sentiment(self, req_id, review):
         def callback(response):
-            logger.info("received raw sentiment")
+            logger.debug("{}: received RAW SENTIMENT".format(req_id))
             if self.outstanding_reqs[req_id].raw_complete():
                 self.latencies.append(self.outstanding_reqs[req_id].latency)
                 self.num_complete += 1
                 del self.outstanding_reqs[req_id]
 
-        logger.info("getting raw sentiment")
         self.client.send_request("theano-lstm", review, callback)
 
     def get_auto_compl_sentiment(self, req_id, review):
         def sentiment_callback(response):
-            logger.info("received auto compl sentiment: {}".format(response))
+            logger.debug("{}: received AUTOCOMPL SENTIMENT".format(req_id))
             if self.outstanding_reqs[req_id].auto_compl_complete():
                 self.latencies.append(self.outstanding_reqs[req_id].latency)
                 self.num_complete += 1
                 del self.outstanding_reqs[req_id]
 
         def auto_compl_callback(response):
-            logger.info("received completion, requesting sentiment. Response: {}".format(response))
+            logger.debug("{}: received AUTO COMPLETE".format(req_id))
             self.client.send_request("theano-lstm", response, sentiment_callback)
 
-        logger.info("requesting completion")
         self.client.send_request("tf-autocomplete", review[:len(review)/2], auto_compl_callback)
 
 
@@ -152,7 +148,12 @@ def setup_clipper():
     cl.start_clipper(query_frontend_image="clipper/zmq_frontend:develop")
     time.sleep(10)
     setup_heavy_node(cl, "theano-lstm", "strings", "model-comp/theano-lstm", gpus=[0])
-    setup_heavy_node(cl, "tf-autocomplete", "strings", "model-comp/tf-autocomplete", slo=10000000, gpus=[1])
+    setup_heavy_node(cl,
+                     "tf-autocomplete",
+                     "strings",
+                     "model-comp/tf-autocomplete",
+                     slo=10000000,
+                     gpus=[1])
     time.sleep(10)
     logger.info("Clipper is set up")
 

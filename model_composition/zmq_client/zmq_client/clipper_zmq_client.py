@@ -2,11 +2,12 @@ import zmq
 import numpy as np
 import struct
 import time
-from datetime import datetime
-import socket
-import sys
+# from datetime import datetime
+# import socket
+# import sys
+import logging
 
-from threading import Lock, Thread
+from threading import RLock, Thread
 from Queue import Queue
 
 DATA_TYPE_INVALID = -1
@@ -20,6 +21,9 @@ BYTES_PER_INT = 4
 BYTES_PER_FLOAT = 4
 BYTES_PER_BYTE = 1
 BYTES_PER_CHAR = 1
+
+logger = logging.getLogger(__name__)
+
 
 class Client:
 
@@ -42,7 +46,7 @@ class Client:
         self.client_id = None
         self.request_id = 0
         self.outstanding_requests = {}
-        self.request_lock = Lock()
+        self.request_lock = RLock()
         self.request_queue = Queue()
 
     def start(self):
@@ -82,7 +86,7 @@ class Client:
         socket.send("")
         connected = False
         while active:
-            timeout = 1000 if connected else 5000
+            timeout = 10000 if connected else 50000
             receivable_sockets = dict(poller.poll(timeout))
             if socket in receivable_sockets and receivable_sockets[socket] == zmq.POLLIN:
                 if connected:
@@ -128,7 +132,9 @@ class Client:
             output = np.frombuffer(output_data, dtype=self._clipper_type_to_dtype(data_type))
 
         self.request_lock.acquire()
-        if request_id in self.outstanding_requests.keys() and self.outstanding_requests[request_id] is not None:
+
+        if (request_id in self.outstanding_requests.keys() and
+                self.outstanding_requests[request_id] is not None):
             self.outstanding_requests[request_id](output)
             del self.outstanding_requests[request_id]
         self.request_lock.release()
@@ -147,8 +153,6 @@ class Client:
                 print("Encountered input with invalid type \
                     corresponding to python data type: {}".format(input_type))
                 continue
-
-
             socket.send("", zmq.SNDMORE)
             socket.send(struct.pack("<I", self.client_id), zmq.SNDMORE)
             socket.send(struct.pack("<I", request_id), zmq.SNDMORE)
