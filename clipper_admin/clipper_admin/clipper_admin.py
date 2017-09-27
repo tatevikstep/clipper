@@ -226,7 +226,8 @@ class ClipperConnection(object):
                                base_image,
                                labels=None,
                                container_registry=None,
-                               num_replicas=1):
+                               num_replicas=1, 
+                               **kwargs):
         """Build a new model container Docker image with the provided data and deploy it as
         a model to Clipper.
 
@@ -280,7 +281,7 @@ class ClipperConnection(object):
             raise UnconnectedException()
         image = self.build_model(name, version, model_data_path, base_image,
                                  container_registry)
-        self.deploy_model(name, version, input_type, batch_size, image, labels, num_replicas)
+        self.deploy_model(name, version, input_type, batch_size, image, labels, num_replicas, **kwargs)
 
     def build_model(self,
                     name,
@@ -383,7 +384,8 @@ class ClipperConnection(object):
                      batch_size,
                      image,
                      labels=None,
-                     num_replicas=1):
+                     num_replicas=1,
+                     **kwargs):
         """Deploys the model in the provided Docker image to Clipper.
 
         Deploying a model to Clipper does a few things.
@@ -445,7 +447,7 @@ class ClipperConnection(object):
         version = str(version)
         _validate_versioned_model_name(name, version)
         self.cm.deploy_model(
-            name, version, input_type, image, num_replicas=num_replicas)
+            name, version, input_type, image, num_replicas=num_replicas, **kwargs)
         self.register_model(
             name, version, input_type, batch_size=batch_size, image=image, labels=labels)
         logger.info("Done deploying model {name}:{version}.".format(
@@ -586,7 +588,7 @@ class ClipperConnection(object):
             version = str(version)
         return self.cm.get_num_replicas(name, version)
 
-    def set_num_replicas(self, name, num_replicas, version=None):
+    def set_num_replicas(self, name, num_replicas, version=None, **kwargs):
         """Sets the total number of active replicas for a model.
 
         If there are more than the current number of replicas
@@ -620,7 +622,7 @@ class ClipperConnection(object):
             image = model_data["container_name"]
             if image != CONTAINERLESS_MODEL_IMAGE:
                 self.cm.set_num_replicas(name, version, input_type, image,
-                                         num_replicas)
+                                         num_replicas, **kwargs)
             else:
                 msg = ("Cannot resize the replica set for containerless model "
                        "{name}:{version}").format(
