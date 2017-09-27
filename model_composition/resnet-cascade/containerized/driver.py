@@ -48,13 +48,14 @@ DATA_TYPE_STRINGS = 4
 def run(proc_num):
     height, width = 299, 299
     channels = 3
-    xs = [np.random.random((height, width, channels)).flatten().astype(np.float32) for _ in range(1000)]
+    xs = [np.random.random((height, width, channels)).flatten().astype(np.float32)
+          for _ in range(10000)]
     predictor = Predictor()
     for x in xs:
         # x = np.random.random((height, width, channels)).flatten().astype(np.float32)
         # logger.info("sending prediction")
         predictor.predict(x)
-        time.sleep(0.04)
+        time.sleep(0.01)
 
 
 class InflightReq(object):
@@ -103,26 +104,28 @@ class Predictor(object):
             del self.outstanding_reqs[req_id]
 
         def res50_callback(response):
-            self.client.send_request("res152", input, res152_callback)
-            # if np.random.random() > 0.6:
-            #     # logger.info("Requesting res152")
-            #     self.client.send_request("res152", input, res152_callback)
-            # else:
-            #     self.outstanding_reqs[req_id].complete()
-            #     self.latencies.append(self.outstanding_reqs[req_id].latency)
-            #     self.num_complete += 1
-            #     del self.outstanding_reqs[req_id]
+            if np.random.random() > 0.6:
+                # logger.info("Requesting res152")
+                self.client.send_request("res152", input, res152_callback)
+            else:
+                self.outstanding_reqs[req_id].complete()
+                self.latencies.append(self.outstanding_reqs[req_id].latency)
+                self.num_complete += 1
+                if self.num_complete % 100 == 0:
+                    self.print_stats()
+                del self.outstanding_reqs[req_id]
 
         def alexnet_callback(response):
-            self.client.send_request("res50", input, res50_callback)
-            # if np.random.random() > 0.7:
-            #     logger.info("Requesting res50")
-            #     self.client.send_request("res50", input, res50_callback)
-            # else:
-            #     self.outstanding_reqs[req_id].complete()
-            #     self.latencies.append(self.outstanding_reqs[req_id].latency)
-            #     self.num_complete += 1
-            #     del self.outstanding_reqs[req_id]
+            if np.random.random() > 0.7:
+                # logger.info("Requesting res50")
+                self.client.send_request("res50", input, res50_callback)
+            else:
+                self.outstanding_reqs[req_id].complete()
+                self.latencies.append(self.outstanding_reqs[req_id].latency)
+                self.num_complete += 1
+                if self.num_complete % 100 == 0:
+                    self.print_stats()
+                del self.outstanding_reqs[req_id]
 
         # logger.info("Requesting alexnet")
         self.client.send_request("alexnet", input, alexnet_callback)
@@ -133,7 +136,7 @@ def setup_heavy_node(clipper_conn,
                      name,
                      input_type,
                      model_image,
-                     slo=20000000,
+                     slo=500000,
                      num_replicas=1,
                      gpus=None):
     clipper_conn.register_application(name=name,
