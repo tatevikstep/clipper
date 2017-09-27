@@ -3,7 +3,7 @@ import rpc
 import os
 import sys
 import numpy as np
-
+import time
 
 class NoopContainer(rpc.ModelContainerBase):
     def __init__(self, prediction="1.0"):

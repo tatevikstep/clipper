@@ -99,16 +99,8 @@ class ClipperConnection(object):
         try:
             self.cm.start_clipper(query_frontend_image, mgmt_frontend_image,
                                   cache_size)
-            # while True:
-            #     try:
-            #         url = "http://{host}/metrics".format(
-            #             host=self.cm.get_query_addr())
-            #         requests.get(url, timeout=5)
-            #         break
-            #     except RequestException as e:
-            #         logger.info("Clipper still initializing.")
-            #         time.sleep(1)
-            # logger.info("Clipper is running")
+            time.sleep(5)
+            logger.info("Clipper is running (hopefully)")
             self.connected = True
         except ClipperException as e:
             logger.warning("Error starting Clipper: {}".format(e.msg))
@@ -119,8 +111,6 @@ class ClipperConnection(object):
 
         self.cm.connect()
         self.connected = True
-        logger.info("Successfully connected to Clipper cluster at {}".format(
-            self.cm.get_query_addr()))
 
     def register_application(self, name, input_type, default_output,
                              slo_micros):
@@ -231,11 +221,12 @@ class ClipperConnection(object):
                                name,
                                version,
                                input_type,
+                               batch_size,
                                model_data_path,
                                base_image,
                                labels=None,
                                container_registry=None,
-                               num_replicas=1,
+                               num_replicas=1, 
                                **kwargs):
         """Build a new model container Docker image with the provided data and deploy it as
         a model to Clipper.
@@ -290,8 +281,7 @@ class ClipperConnection(object):
             raise UnconnectedException()
         image = self.build_model(name, version, model_data_path, base_image,
                                  container_registry)
-        self.deploy_model(name, version, input_type, image, labels,
-                          num_replicas, **kwargs)
+        self.deploy_model(name, version, input_type, batch_size, image, labels, num_replicas, **kwargs)
 
     def build_model(self,
                     name,
@@ -391,6 +381,7 @@ class ClipperConnection(object):
                      name,
                      version,
                      input_type,
+                     batch_size,
                      image,
                      labels=None,
                      num_replicas=1,
@@ -458,7 +449,7 @@ class ClipperConnection(object):
         self.cm.deploy_model(
             name, version, input_type, image, num_replicas=num_replicas, **kwargs)
         self.register_model(
-            name, version, input_type, image=image, labels=labels)
+            name, version, input_type, batch_size=batch_size, image=image, labels=labels)
         logger.info("Done deploying model {name}:{version}.".format(
             name=name, version=version))
 
@@ -466,6 +457,7 @@ class ClipperConnection(object):
                        name,
                        version,
                        input_type,
+                       batch_size,
                        image=None,
                        labels=None):
         """Registers a new model version with Clipper.
@@ -519,6 +511,7 @@ class ClipperConnection(object):
             "labels": labels,
             "input_type": input_type,
             "container_name": image,
+            "batch_size": batch_size,
             "model_data_path": "DEPRECATED",
         })
         headers = {'Content-type': 'application/json'}
