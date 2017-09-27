@@ -73,7 +73,8 @@ class ClipperConnection(object):
                 __version__),
             mgmt_frontend_image='clipper/management_frontend:{}'.format(
                 __version__),
-            cache_size=DEFAULT_PREDICTION_CACHE_SIZE_BYTES):
+            cache_size=DEFAULT_PREDICTION_CACHE_SIZE_BYTES,
+            **kwargs):
         """Start a new Clipper cluster and connect to it.
 
         This command will start a new Clipper instance using the container manager provided when
@@ -98,7 +99,7 @@ class ClipperConnection(object):
         """
         try:
             self.cm.start_clipper(query_frontend_image, mgmt_frontend_image,
-                                  cache_size)
+                                  cache_size, **kwargs)
             time.sleep(5)
             logger.info("Clipper is running (hopefully)")
             self.connected = True
@@ -226,7 +227,7 @@ class ClipperConnection(object):
                                base_image,
                                labels=None,
                                container_registry=None,
-                               num_replicas=1, 
+                               num_replicas=1,
                                **kwargs):
         """Build a new model container Docker image with the provided data and deploy it as
         a model to Clipper.

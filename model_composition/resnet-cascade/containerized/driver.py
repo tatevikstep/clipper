@@ -25,31 +25,14 @@ DATA_TYPE_FLOATS = 2
 DATA_TYPE_DOUBLES = 3
 DATA_TYPE_STRINGS = 4
 
-# CIFAR_SIZE_DOUBLES = (299 * 299 * 3) / 2
-
-
-# def load_reviews():
-#     base_path = "/home/ubuntu/clipper/model_composition/text-driver-1/workload_data/aclImdb/test/"
-#     reviews = []
-#     pos_path = os.path.join(base_path, "pos")
-#     for rev_file in os.listdir(pos_path):
-#         with open(os.path.join(pos_path, rev_file), "r") as f:
-#             reviews.append(f.read().strip())
-#
-#     neg_path = os.path.join(base_path, "neg")
-#     for rev_file in os.listdir(neg_path):
-#         with open(os.path.join(neg_path, rev_file), "r") as f:
-#             reviews.append(f.read().strip())
-#     # Shuffle in place
-#     np.random.shuffle(reviews)
-#     return reviews
-
 
 def run(proc_num):
     height, width = 299, 299
     channels = 3
+    logger.info("Generating random inputs")
     xs = [np.random.random((height, width, channels)).flatten().astype(np.float32)
           for _ in range(10000)]
+    logger.info("Starting predictions")
     predictor = Predictor()
     for x in xs:
         # x = np.random.random((height, width, channels)).flatten().astype(np.float32)
@@ -74,6 +57,9 @@ class Predictor(object):
         self.outstanding_reqs = {}
         self.client = Client("localhost", 4456, 4455)
         self.client.start()
+        self.init_stats()
+
+    def init_stats(self):
         self.latencies = []
         self.num_complete = 0
         self.cur_req_id = 0
@@ -116,15 +102,17 @@ class Predictor(object):
                 del self.outstanding_reqs[req_id]
 
         def alexnet_callback(response):
-            if np.random.random() > 0.7:
+            # if np.random.random() > 0.7:
+            if False:
                 # logger.info("Requesting res50")
                 self.client.send_request("res50", input, res50_callback)
             else:
                 self.outstanding_reqs[req_id].complete()
                 self.latencies.append(self.outstanding_reqs[req_id].latency)
                 self.num_complete += 1
-                if self.num_complete % 100 == 0:
+                if self.num_complete % 200 == 0:
                     self.print_stats()
+                    self.init_stats()
                 del self.outstanding_reqs[req_id]
 
         # logger.info("Requesting alexnet")
@@ -136,9 +124,12 @@ def setup_heavy_node(clipper_conn,
                      name,
                      input_type,
                      model_image,
+                     allocated_cpus,
+                     cpus_per_replica,
                      slo=500000,
                      num_replicas=1,
-                     gpus=None):
+                     gpus=None,
+                     batch_size=1):
     clipper_conn.register_application(name=name,
                                       default_output="TIMEOUT",
                                       slo_micros=slo,
@@ -149,19 +140,31 @@ def setup_heavy_node(clipper_conn,
                               image=model_image,
                               input_type=input_type,
                               num_replicas=num_replicas,
-                              gpus=gpus)
+                              batch_size=batch_size,
+                              gpus=gpus,
+                              allocated_cpus=allocated_cpus,
+                              cpus_per_replica=cpus_per_replica)
 
     clipper_conn.link_model_to_app(app_name=name, model_name=name)
 
 
 def setup_clipper():
     cl = ClipperConnection(DockerContainerManager(redis_port=6380))
-    cl.start_clipper(query_frontend_image="clipper/zmq_frontend:develop")
+    cl.start_clipper(query_frontend_image="clipper/zmq_frontend:develop",
+                     redis_cpu_str="0",
+                     mgmt_cpu_str="8",
+                     query_cpu_str="1-5,9-13")
     time.sleep(10)
-    setup_heavy_node(cl, "alexnet", "floats", "model-comp/pytorch-alexnet", gpus=[0])
-    setup_heavy_node(cl, "res50", "floats", "model-comp/pytorch-res50", gpus=[1])
-    setup_heavy_node(cl, "res152", "floats", "model-comp/pytorch-res152", gpus=[2])
-    time.sleep(1)
+    setup_heavy_node(cl, "alexnet", "floats", "model-comp/pytorch-alexnet",
+                     allocated_cpus=range(16, 32),
+                     cpus_per_replica=1,
+                     gpus=[0],
+                     batch_size=4,
+                     num_replicas=1,
+                     )
+    # setup_heavy_node(cl, "res50", "floats", "model-comp/pytorch-res50", gpus=[1])
+    # setup_heavy_node(cl, "res152", "floats", "model-comp/pytorch-res152", gpus=[2])
+    time.sleep(10)
     logger.info("Clipper is set up")
 
 
