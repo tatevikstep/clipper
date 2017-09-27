@@ -1,0 +1,5 @@
+FROM model-comp/pytorch
+
+RUN echo "res50" > /model/model.txt
+
+# vim: set filetype=dockerfile:
