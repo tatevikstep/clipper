@@ -6,4 +6,6 @@ RUN mkdir -p /model \
     && apt-get install -y python-pip \
     && pip install pyzmq
 
+COPY rpc.py __init__.py /container/
+
 # vim: set filetype=dockerfile:

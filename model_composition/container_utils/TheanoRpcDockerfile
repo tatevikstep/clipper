@@ -51,3 +51,5 @@ RUN mv /usr/include/cudnn.h /usr/local/cuda/include
 
 RUN echo '[global]\ndevice=cuda0\n[cuda]\nroot="/usr/local/cuda-7.5"\n[dnn]\ninclude_path="/usr/local/cuda-7.5/include"\nlibrary_path="/usr/local/cuda-7.5/lib64"\n' >> ~/.theanorc
 RUN echo '[gcc]\ncxxflags=-I/root/.local/include\n' >> ~/.theanorc
+
+COPY rpc.py __init__.py /container/

@@ -6,7 +6,7 @@ ENV CLIPPER_MODEL_CHECKPOINT_PATH=/model/lm1b_ckpts/ckpt-*
 
 
 COPY lm1b_model_data/ /model/
-COPY tf_autocompletion_container.py lm1b_data_utils.py rpc.py __init__.py /container/
+COPY tf_autocompletion_container.py lm1b_data_utils.py /container/
 
 CMD ["python", "/container/tf_autocompletion_container.py"]
 

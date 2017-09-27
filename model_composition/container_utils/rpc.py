@@ -327,7 +327,7 @@ class Server(threading.Thread):
 
                         response.send(socket, self.event_history)
 
-                        print("recv: %f us, parse: %f us, handle: %f us" %
+                        print("recv: %f us, parse: %f us, handle: %f seconds" %
                               ((t2 - t1).microseconds, (t3 - t2).microseconds,
                                (t4 - t3).total_seconds()))
                         sys.stdout.flush()
