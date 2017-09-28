@@ -302,7 +302,7 @@ class Histogram : public Metric {
   // This method obtains a snapshot from the histogram's reservoir sampler
   // and then calculates the percentile
   long double percentile(double rank);
-  long double mean(std::vector<int64_t>& snapshot);
+  long double compute_mean(std::vector<int64_t>& snapshot);
 
   // Metric implementation
   MetricType type() const override;

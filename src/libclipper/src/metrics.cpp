@@ -491,7 +491,7 @@ long double Histogram::percentile(double rank) {
   return Histogram::percentile(snapshot, rank);
 }
 
-long double Histogram::mean(std::vector<int64_t>& snapshot) {
+long double Histogram::compute_mean(std::vector<int64_t>& snapshot) {
   long double mean = 0;
   long double k = snapshot.size();
   for(int64_t elem : snapshot) {
