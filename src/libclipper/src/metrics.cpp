@@ -511,7 +511,7 @@ const HistogramStats Histogram::compute_stats() {
   std::sort(snapshot.begin(), snapshot.end());
   int64_t min = snapshot.front();
   int64_t max = snapshot.back();
-  long double mean = mean(snapshot);
+  long double mean = compute_mean(snapshot);
   long double p50 = percentile(snapshot, .5);
   long double p95 = percentile(snapshot, .95);
   long double p99 = percentile(snapshot, .99);
