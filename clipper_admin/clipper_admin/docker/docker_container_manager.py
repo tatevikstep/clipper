@@ -230,7 +230,7 @@ class DockerContainerManager(ContainerManager):
                     version=version,
                     missing=(num_missing)))
             if "gpus" in kwargs:
-                available_gpus = kwargs["gpus"]
+                available_gpus = list(kwargs["gpus"])
 
             # Enumerated list of cpus that can be allocated (e.g [1, 2, 3, 8, 9])
             if "allocated_cpus" in kwargs:

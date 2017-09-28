@@ -1,4 +1,10 @@
+from __future__ import print_function
 import json
+import logging
+import os
+import datetime
+
+logger = logging.getLogger(__name__)
 
 
 class HeavyNodeConfig(object):
@@ -44,7 +50,8 @@ def setup_heavy_node(clipper_conn, config):
 
     clipper_conn.link_model_to_app(app_name=config.name, model_name=config.name)
 
-def save_results(configs, clipper_conn):
+
+def save_results(configs, clipper_conn, client_metrics, results_dir):
     """
     Parameters
     ----------
@@ -53,5 +60,19 @@ def save_results(configs, clipper_conn):
 
 
     """
-    pass
 
+    results_dir = os.path.abspath(os.path.expanduser(results_dir))
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+        logger.info("Created experiments directory: %s" % results_dir)
+
+    results_obj = {
+        "node_configs": [c.__dict__ for c in configs],
+        "clipper_metrics": clipper_conn.inspect_instance(),
+        "client_metrics": client_metrics,
+    }
+    results_file = os.path.join(results_dir,
+                                "results-{:%y%m%d_%H%M%S}.json".format(datetime.datetime.now()))
+    with open(results_file, "w") as f:
+        json.dump(results_obj, f, indent=4)
+        logger.info("Saved results to {}".format(results_file))
