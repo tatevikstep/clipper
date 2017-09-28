@@ -1,3 +1,4 @@
 release/
 debug/
 model_composition/text-driver-1/*
+model_composition/resnet-driver/*

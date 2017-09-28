@@ -86,7 +86,7 @@ class DockerContainerManager(ContainerManager):
         self.extra_container_kwargs.update(container_args)
 
     def start_clipper(self, query_frontend_image, mgmt_frontend_image,
-                      cache_size):
+                      cache_size, redis_cpu_str="0", mgmt_cpu_str="1", query_cpu_str="2-11"):
         try:
             self.docker_client.networks.create(
                 self.docker_network, check_duplicate=True)
@@ -103,6 +103,7 @@ class DockerContainerManager(ContainerManager):
                     random.randint(0, 100000)),  # generate a random name
                 ports={'%s/tcp' % self.redis_port: self.redis_port},
                 labels=self.common_labels.copy(),
+                cpuset_cpus=redis_cpu_str,
                 **self.extra_container_kwargs)
             self.redis_ip = redis_container.name
 
@@ -120,6 +121,7 @@ class DockerContainerManager(ContainerManager):
                 self.clipper_management_port
             },
             labels=mgmt_labels,
+            cpuset_cpus=mgmt_cpu_str,
             **self.extra_container_kwargs)
         query_cmd = "--redis_ip={redis_ip} --redis_port={redis_port}".format(
             redis_ip=self.redis_ip,
@@ -138,6 +140,7 @@ class DockerContainerManager(ContainerManager):
                 '%s/tcp' % CLIPPER_INTERNAL_RPC_PORT: self.clipper_rpc_port
             },
             labels=query_labels,
+            cpuset_cpus=query_cpu_str,
             **self.extra_container_kwargs)
         self.connect()
 
@@ -168,7 +171,7 @@ class DockerContainerManager(ContainerManager):
     def get_num_replicas(self, name, version):
         return len(self._get_replicas(name, version))
 
-    def _add_replica(self, name, version, input_type, image, gpu_num=None):
+    def _add_replica(self, name, version, input_type, image, gpu_num=None, cpu_str=None):
 
         containers = self.docker_client.containers.list(
             filters={"label": CLIPPER_QUERY_FRONTEND_CONTAINER_LABEL})
@@ -193,6 +196,7 @@ class DockerContainerManager(ContainerManager):
                 image,
                 environment=env_vars,
                 labels=labels,
+                cpuset_cpus=cpu_str,
                 **self.extra_container_kwargs)
         else:
             logger.info("Starting {name}:{version} on GPU {gpu_num}".format(
@@ -207,6 +211,8 @@ class DockerContainerManager(ContainerManager):
             for k, v in env_vars.iteritems():
                 cmd.append("-e")
                 cmd.append("%s=%s" % (k, v))
+            if cpu_str:
+                cmd.append("--cpuset-cpus=%s" % cpu_str)
             cmd.append(image)
             logger.info("Docker command: \"%s\"" % cmd)
             subprocess.check_call(cmd, env=env)
@@ -224,10 +230,27 @@ class DockerContainerManager(ContainerManager):
                     missing=(num_missing)))
             if "gpus" in kwargs:
                 available_gpus = kwargs["gpus"]
-            for _ in range(num_missing):
+
+            # Enumerated list of cpus that can be allocated (e.g [1, 2, 3, 8, 9])
+            if "allocated_cpus" in kwargs:
+                allocated_cpus = kwargs["allocated_cpus"]
+            if "cpus_per_replica" in kwargs:
+                cpus_per_replica = kwargs["cpus_per_replica"]
+            if (len(allocated_cpus) / cpus_per_replica) < num_missing:
+                raise ClipperException(
+                    "Not enough cpus available. Trying to allocate {reps} replicas \
+                    {cpus_per} CPUs each out of only {alloc_cpus} allocated cpus".format(
+                        reps=num_missing,
+                        cpus_per=cpus_per_replica,
+                        alloc_cpus=len(allocated_cpus)))
+            for i in range(num_missing):
                 if len(available_gpus) > 0:
                     gpu_num = available_gpus.pop()
-                self._add_replica(name, version, input_type, image, gpu_num=gpu_num)
+                cpus = allocated_cpus[i*cpus_per_replica: (i+1)*cpus_per_replica]
+                cpus = [str(c) for c in cpus]
+                cpu_str = ",".join(cpus)
+                self._add_replica(name, version, input_type, image, gpu_num=gpu_num,
+                                  cpu_str=cpu_str)
         elif len(current_replicas) > num_replicas:
             num_extra = len(current_replicas) - num_replicas
             logger.info(
