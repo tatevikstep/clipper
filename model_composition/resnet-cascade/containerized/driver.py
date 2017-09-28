@@ -33,14 +33,14 @@ def run(proc_num, configs):
     channels = 3
     logger.info("Generating random inputs")
     xs = [np.random.random((height, width, channels)).flatten().astype(np.float32)
-          for _ in range(5000)]
+          for _ in range(10000)]
     logger.info("Starting predictions")
     predictor = Predictor()
     for x in xs:
         # x = np.random.random((height, width, channels)).flatten().astype(np.float32)
         # logger.info("sending prediction")
         predictor.predict(x)
-        time.sleep(0.001)
+        time.sleep(0.005)
     cl = ClipperConnection(DockerContainerManager(redis_port=6380))
     cl.connect()
     driver_utils.save_results(configs, cl, predictor.stats, "gpu_and_batch_size_experiments")
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     # parser.add_argument('--num_procs', type=int, default=1)
     # args = parser.parse_args()
 
-    for num_reps in range(4):
+    for num_reps in range(1,5):
         for batch_size in [1, 2, 4, 8, 16, 32]:
             alexnet_config = driver_utils.HeavyNodeConfig("alexnet",
                                                           "floats",

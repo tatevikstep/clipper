@@ -247,6 +247,8 @@ class DockerContainerManager(ContainerManager):
             for i in range(num_missing):
                 if len(available_gpus) > 0:
                     gpu_num = available_gpus.pop()
+                else:
+                    gpu_num = None
                 cpus = allocated_cpus[i*cpus_per_replica: (i+1)*cpus_per_replica]
                 cpus = [str(c) for c in cpus]
                 cpu_str = ",".join(cpus)

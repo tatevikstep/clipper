@@ -17,6 +17,6 @@ CLIPPER_ROOT=$DIR/..
 
 pip install -e $CLIPPER_ROOT/clipper_admin
 
-pip install -e $CLIPPER_ROOT/model_composition/composition_utils
+pip install -e $CLIPPER_ROOT/model_composition/containerized_utils
 
-pip install -e $CLIPPER_ROOT/model_composition/zmq_client
+pip install -e $CLIPPER_ROOT/model_composition/single_proc_utils
