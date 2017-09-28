@@ -255,9 +255,8 @@ class ReservoirSampler {
    * capacity
    *
    * @param value The new value to be inserted
-   * @return The value that was removed, or zero if no value was removed
    */
-  int64_t sample(const int64_t value);
+  void sample(const int64_t value);
   void clear();
   const std::vector<int64_t> snapshot() const;
   size_t current_size() const;
@@ -299,10 +298,11 @@ class Histogram : public Metric {
 
   void insert(const int64_t value);
   const HistogramStats compute_stats();
-  static long double percentile(std::vector<int64_t> snapshot, double rank);
+  static long double percentile(std::vector<int64_t>& snapshot, double rank);
   // This method obtains a snapshot from the histogram's reservoir sampler
   // and then calculates the percentile
   long double percentile(double rank);
+  long double compute_mean(std::vector<int64_t>& snapshot);
 
   // Metric implementation
   MetricType type() const override;
@@ -312,20 +312,8 @@ class Histogram : public Metric {
   void clear() override;
 
  private:
-  /**
-   * @param old_reservoir_size The old size of the reservoir
-   * @param new_reservoir_size The new size of the reservoir
-   * @param new_value The value that was just inserted into the reservoir
-   * @param old_value The value that was just removed from the reservoir (use
-   * zero if nothing was removed)
-   */
-  void update_mean(const size_t old_reservoir_size,
-                   const size_t new_reservoir_size, const int64_t new_value,
-                   const int64_t old_value);
-
   std::string name_;
   std::string unit_;
-  long double mean_ = 0;
   ReservoirSampler sampler_;
   std::mutex sampler_lock_;
 };
