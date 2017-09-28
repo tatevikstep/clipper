@@ -7,9 +7,11 @@ import time
 from clipper_admin import ClipperConnection, DockerContainerManager
 # from datetime import datetime
 from multiprocessing import Process
-from zmq_client import Client
+from containerized_utils.zmq_client import Client
+from containerized_utils import driver_utils
 from datetime import datetime
 import argparse
+import json
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
@@ -80,72 +82,33 @@ class Predictor(object):
         req_id = self.cur_req_id
         self.outstanding_reqs[req_id] = InflightReq()
 
-        def res152_callback(response):
+        def complete_req(response):
             self.outstanding_reqs[req_id].complete()
             self.latencies.append(self.outstanding_reqs[req_id].latency)
             self.num_complete += 1
-            if self.num_complete % 100 == 0:
+            if self.num_complete % 200 == 0:
                 self.print_stats()
-
+                self.init_stats()
             del self.outstanding_reqs[req_id]
 
         def res50_callback(response):
             if np.random.random() > 0.6:
                 # logger.info("Requesting res152")
-                self.client.send_request("res152", input, res152_callback)
+                self.client.send_request("res152", input).then(complete_req)
             else:
-                self.outstanding_reqs[req_id].complete()
-                self.latencies.append(self.outstanding_reqs[req_id].latency)
-                self.num_complete += 1
-                if self.num_complete % 100 == 0:
-                    self.print_stats()
-                del self.outstanding_reqs[req_id]
+                complete_req(response)
 
-        def alexnet_callback(response):
+        def alexnet_completion(response):
             # if np.random.random() > 0.7:
             if False:
-                # logger.info("Requesting res50")
-                self.client.send_request("res50", input, res50_callback)
+                self.client.send_request("res50", input).then(res50_callback)
             else:
-                self.outstanding_reqs[req_id].complete()
-                self.latencies.append(self.outstanding_reqs[req_id].latency)
-                self.num_complete += 1
-                if self.num_complete % 200 == 0:
-                    self.print_stats()
-                    self.init_stats()
-                del self.outstanding_reqs[req_id]
+                complete_req(response)
 
-        # logger.info("Requesting alexnet")
-        self.client.send_request("alexnet", input, alexnet_callback)
+        alexnet_future = self.client.send_request("alexnet", input)
+        alexnet_future.then(alexnet_completion)
         self.cur_req_id += 1
 
-
-def setup_heavy_node(clipper_conn,
-                     name,
-                     input_type,
-                     model_image,
-                     allocated_cpus,
-                     cpus_per_replica,
-                     slo=500000,
-                     num_replicas=1,
-                     gpus=None,
-                     batch_size=1):
-    clipper_conn.register_application(name=name,
-                                      default_output="TIMEOUT",
-                                      slo_micros=slo,
-                                      input_type=input_type)
-
-    clipper_conn.deploy_model(name=name,
-                              version=1,
-                              image=model_image,
-                              input_type=input_type,
-                              num_replicas=num_replicas,
-                              batch_size=batch_size,
-                              gpus=gpus,
-                              allocated_cpus=allocated_cpus,
-                              cpus_per_replica=cpus_per_replica)
-
-    clipper_conn.link_model_to_app(app_name=name, model_name=name)
 
 
 def setup_clipper():
@@ -155,17 +118,20 @@ def setup_clipper():
                      mgmt_cpu_str="8",
                      query_cpu_str="1-5,9-13")
     time.sleep(10)
-    setup_heavy_node(cl, "alexnet", "floats", "model-comp/pytorch-alexnet",
-                     allocated_cpus=range(16, 32),
-                     cpus_per_replica=1,
-                     gpus=[0],
-                     batch_size=4,
-                     num_replicas=1,
-                     )
+    alexnet_config = driver_utils.HeavyNodeConfig("alexnet",
+                                                  "floats",
+                                                  "model-comp/pytorch-alexnet",
+                                                  allocated_cpus=range(16, 32),
+                                                  cpus_per_replica=1,
+                                                  gpus=[0],
+                                                  batch_size=1,
+                                                  num_replicas=1)
+    driver_utils.setup_heavy_node(cl, alexnet_config)
     # setup_heavy_node(cl, "res50", "floats", "model-comp/pytorch-res50", gpus=[1])
     # setup_heavy_node(cl, "res152", "floats", "model-comp/pytorch-res152", gpus=[2])
     time.sleep(10)
     logger.info("Clipper is set up")
+    print(cl.inspect_instance())
 
 
 if __name__ == "__main__":

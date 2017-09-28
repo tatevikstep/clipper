@@ -137,6 +137,7 @@ class DockerContainerManager(ContainerManager):
             ports={
                 '4455/tcp': 4455,
                 '4456/tcp': 4456,
+                '1337/tcp': 1337,
                 '%s/tcp' % CLIPPER_INTERNAL_RPC_PORT: self.clipper_rpc_port
             },
             labels=query_labels,

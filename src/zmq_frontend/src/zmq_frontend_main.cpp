@@ -4,6 +4,18 @@
 #include <clipper/constants.hpp>
 #include <clipper/query_processor.hpp>
 #include <cxxopts.hpp>
+#include <server_http.hpp>
+
+using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
+
+const std::string GET_METRICS = "^/metrics$";
+
+void respond_http(std::string content, std::string message,
+                  std::shared_ptr<HttpServer::Response> response) {
+  *response << "HTTP/1.1 " << message << "\r\nContent-Type: application/json"
+            << "\r\nContent-Length: " << content.length() << "\r\n\r\n"
+            << content << "\n";
+}
 
 int main(int argc, char* argv[]) {
   cxxopts::Options options("zmq_frontend",
@@ -29,12 +41,19 @@ int main(int argc, char* argv[]) {
   // conf.set_task_execution_threadpool_size(options["threadpool_size"].as<int>());
   conf.ready();
 
-  zmq_frontend::ServerImpl server("0.0.0.0", 4455, 4456);
+  zmq_frontend::ServerImpl zmq_server("0.0.0.0", 4455, 4456);
 
-  using namespace std::chrono_literals;
-  while (true) {
-    std::this_thread::sleep_for(30s);
-    server.get_metrics();
-    std::cout << server.get_metrics() << std::endl;
-  }
+  HttpServer metrics_server("0.0.0.0", clipper::QUERY_FRONTEND_PORT, 1);
+
+  metrics_server.add_endpoint(GET_METRICS, "GET",
+                       [](std::shared_ptr<HttpServer::Response> response,
+                          std::shared_ptr<HttpServer::Request> /*request*/) {
+                         clipper::metrics::MetricsRegistry& registry =
+                             clipper::metrics::MetricsRegistry::get_metrics();
+                         std::string metrics_report =
+                             registry.report_metrics();
+                        std::cout << metrics_report << std::endl;
+                         respond_http(metrics_report, "200 OK", response);
+                       });
+  metrics_server.start();
 }
