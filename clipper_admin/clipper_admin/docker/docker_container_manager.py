@@ -137,6 +137,7 @@ class DockerContainerManager(ContainerManager):
             ports={
                 '4455/tcp': 4455,
                 '4456/tcp': 4456,
+                '1337/tcp': 1337,
                 '%s/tcp' % CLIPPER_INTERNAL_RPC_PORT: self.clipper_rpc_port
             },
             labels=query_labels,
@@ -229,7 +230,7 @@ class DockerContainerManager(ContainerManager):
                     version=version,
                     missing=(num_missing)))
             if "gpus" in kwargs:
-                available_gpus = kwargs["gpus"]
+                available_gpus = list(kwargs["gpus"])
 
             # Enumerated list of cpus that can be allocated (e.g [1, 2, 3, 8, 9])
             if "allocated_cpus" in kwargs:
@@ -246,6 +247,8 @@ class DockerContainerManager(ContainerManager):
             for i in range(num_missing):
                 if len(available_gpus) > 0:
                     gpu_num = available_gpus.pop()
+                else:
+                    gpu_num = None
                 cpus = allocated_cpus[i*cpus_per_replica: (i+1)*cpus_per_replica]
                 cpus = [str(c) for c in cpus]
                 cpu_str = ",".join(cpus)

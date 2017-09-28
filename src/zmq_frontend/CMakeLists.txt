@@ -9,6 +9,7 @@ target_link_libraries(clipper_zmq_frontend
         boost
         cxxopts
         folly
+        httpserver
         zmqcpp
         wangle
         base64json)
