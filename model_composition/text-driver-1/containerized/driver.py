@@ -40,6 +40,8 @@ CLIPPER_ADDRESS = "localhost"
 CLIPPER_SEND_PORT = 4456
 CLIPPER_RECV_PORT = 4455
 
+DEFAULT_OUTPUT = "TIMEOUT"
+
 ########## Setup ##########
 
 def setup_clipper(config):
@@ -51,7 +53,7 @@ def setup_clipper(config):
         mgmt_cpu_str="8",
         query_cpu_str="1-5,9-13")
     time.sleep(10)
-    driver_utils.setup_heavy_node(cl, config)
+    driver_utils.setup_heavy_node(cl, config, DEFAULT_OUTPUT)
     time.sleep(10)
     logger.info("Clipper is set up!")
     return config
@@ -59,9 +61,9 @@ def setup_clipper(config):
 def get_heavy_node_config(model_name, batch_size, num_replicas, cpus_per_replica=None, allocated_cpus=None, allocated_gpus=None):
     if model_name == AUTOCOMPLETION_MODEL_APP_NAME:
         if not cpus_per_replica:
-            cpus_per_replica = 2
+            cpus_per_replica = 5
         if not allocated_cpus:
-            allocated_cpus = [6,7,14,15]
+            allocated_cpus = [6,7,14,15,16,17,18,19,20,21]
         if not allocated_gpus:
             allocated_gpus = [0]
 
@@ -78,7 +80,7 @@ def get_heavy_node_config(model_name, batch_size, num_replicas, cpus_per_replica
         if not cpus_per_replica:
             cpus_per_replica = 2
         if not allocated_cpus:
-            allocated_cpus = range(16,19)
+            allocated_cpus = range(22,26)
         if not allocated_gpus:
             allocated_gpus = [0]
 
@@ -128,6 +130,8 @@ class Predictor(object):
     def predict(self, model_app_name, input_item):
         begin_time = datetime.now()
         def continuation(output):
+            if output == DEFAULT_OUTPUT:
+                return
             end_time = datetime.now()
             latency = (end_time - begin_time).total_seconds()
             self.latencies.append(latency)
@@ -183,9 +187,9 @@ class ModelBenchmarker(object):
 
     def _get_inputs_generator_fn(self, model_name):
         if model_name == AUTOCOMPLETION_MODEL_APP_NAME:
-            return lambda : _gen_inputs(self, num_inputs=5000, input_length=10)
+            return lambda : self._gen_inputs(num_inputs=5000, input_length=10)
         elif model_name == LSTM_MODEL_APP_NAME:
-            return lambda : _gen_inputs(self, num_inputs=5000, input_length=200)
+            return lambda : self._gen_inputs(num_inputs=5000, input_length=200)
 
     def _load_reviews(self):
         base_path = os.path.join(CURR_DIR, "workload_data/aclImdb/test/")
