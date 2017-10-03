@@ -50,8 +50,8 @@ def setup_clipper(config):
     cl.start_clipper(
         query_frontend_image="clipper/zmq_frontend:develop",
         redis_cpu_str="0",
-        mgmt_cpu_str="8",
-        query_cpu_str="1-5,9-13")
+        mgmt_cpu_str="0",
+        query_cpu_str="1-4")
     time.sleep(10)
     driver_utils.setup_heavy_node(cl, config, DEFAULT_OUTPUT)
     time.sleep(10)
@@ -234,11 +234,11 @@ if __name__ == "__main__":
     for num_replicas in replica_num_confs:
         for cpus_per_replica in cpus_per_replica_confs:
             for batch_size in batch_size_confs:
-                model_config = get_heavy_node_config(model_name=args.model_name, 
-                                                     batch_size=batch_size, 
+                model_config = get_heavy_node_config(model_name=args.model_name,
+                                                     batch_size=batch_size,
                                                      num_replicas=num_replicas,
                                                      cpus_per_replica=cpus_per_replica,
-                                                     allocated_cpus=args.model_cpus,                               
+                                                     allocated_cpus=args.model_cpus,
                                                      allocated_gpus=args.model_gpus)
                 setup_clipper(model_config)
                 benchmarker = ModelBenchmarker(model_config)
